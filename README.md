@@ -8,7 +8,7 @@ It provides an OAuth2-authenticated bridge to read data from consented Miele dom
 - Node.js LTS
 - SQLite
 
-## Setup
+## Setup (Local Development)
 
 1. Clone the repository.
 2. Install dependencies:
@@ -23,11 +23,17 @@ It provides an OAuth2-authenticated bridge to read data from consented Miele dom
    ```bash
    npm run dev
    ```
-5. Or build and start for production:
+
+## Deployment (Docker Compose)
+
+The easiest way to run the server in production is using Docker Compose.
+
+1. Ensure your `.env` file is fully configured.
+2. Build and start the container in detached mode:
    ```bash
-   npm run build
-   npm start
+   docker-compose up -d --build
    ```
+3. The server will run on the port specified in your `docker-compose.yml` (default `8089`). Configure your Nginx Proxy Manager to forward traffic to this port. SQLite data is persisted locally in the `./data` directory.
 
 ## Demo Flow
 

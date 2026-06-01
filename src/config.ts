@@ -24,10 +24,10 @@ let config: Config;
 
 try {
   config = envSchema.parse(process.env);
-} catch (error) {
+} catch (error: any) {
   if (error instanceof z.ZodError) {
     console.error('❌ Invalid environment variables:');
-    error.errors.forEach((err) => {
+    (error as any).errors.forEach((err: any) => {
       console.error(`  - ${err.path.join('.')}: ${err.message}`);
     });
     process.exit(1);

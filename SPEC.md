@@ -634,51 +634,34 @@ Handles OAuth callback and stores tokens.
 
 No token values are returned.
 
-## 12. Ubuntu Deployment
+## 12. Docker Compose Deployment
 
-Recommended paths:
+The MVP is deployed using a Docker Compose stack. 
 
+Recommended structure on the host:
 ```text
-/opt/miele-mcp-server
-/var/lib/miele-mcp
-/etc/miele-mcp/miele-mcp.env
+/opt/miele-mcp-server/
+  docker-compose.yml
+  Dockerfile
+  .env
+  data/
 ```
 
-Recommended service user:
+`docker-compose.yml` example:
+```yaml
+version: '3.8'
 
-```text
-miele-mcp
-```
-
-Recommended permissions:
-
-```bash
-sudo chown -R miele-mcp:miele-mcp /opt/miele-mcp-server
-sudo chown -R miele-mcp:miele-mcp /var/lib/miele-mcp
-sudo chmod 600 /etc/miele-mcp/miele-mcp.env
-```
-
-Example systemd service:
-
-```ini
-[Unit]
-Description=Miele MCP Server
-After=network.target
-
-[Service]
-Type=simple
-User=miele-mcp
-Group=miele-mcp
-WorkingDirectory=/opt/miele-mcp-server
-EnvironmentFile=/etc/miele-mcp/miele-mcp.env
-ExecStart=/usr/bin/node dist/index.js
-Restart=always
-RestartSec=5
-NoNewPrivileges=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
+services:
+  miele-mcp-server:
+    build: .
+    container_name: miele-mcp-server
+    restart: unless-stopped
+    ports:
+      - "8089:3000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
 ```
 
 ## 13. Reverse Proxy
