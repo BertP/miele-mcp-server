@@ -15,6 +15,7 @@ const envSchema = z.object({
   MIELE_SCOPES: z.string().default('openid mcs_thirdparty_read'),
   DATABASE_PATH: z.string().default('./miele-mcp.sqlite'),
   SESSION_SECRET: z.string().min(8, "SESSION_SECRET must be at least 8 characters long"),
+  MCP_API_TOKEN: z.string().min(8).describe('Secure API token required for connecting MCP clients via SSE'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 

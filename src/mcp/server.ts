@@ -7,47 +7,52 @@ import { getDeviceStateTool } from './tools/getDeviceState';
 import { getDeviceActionsTool } from './tools/getDeviceActions';
 import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool } from './tools/otherReadTools';
 
-const server = new Server(
-  {
-    name: 'miele-mcp-server',
-    version: '1.0.0',
-  },
-  {
-    capabilities: {
-      tools: {},
+export function createMcpServer(): Server {
+  const server = new Server(
+    {
+      name: 'miele-mcp-server',
+      version: '1.0.0',
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
-const tools = [
-  listDevicesTool,
-  getDeviceStateTool,
-  getDeviceActionsTool,
-  getDeviceTool,
-  getDeviceProgramsTool,
-  getDeviceIdentTool,
-];
+  const tools = [
+    listDevicesTool,
+    getDeviceStateTool,
+    getDeviceActionsTool,
+    getDeviceTool,
+    getDeviceProgramsTool,
+    getDeviceIdentTool,
+  ];
 
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: tools.map(t => ({
-      name: t.name,
-      description: t.description,
-      inputSchema: t.inputSchema,
-    })),
-  };
-});
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: tools.map(t => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.inputSchema,
+      })),
+    };
+  });
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const tool = tools.find(t => t.name === request.params.name);
-  if (!tool) {
-    throw new Error(`Tool not found: ${request.params.name}`);
-  }
-  
-  return await tool.handler(request.params.arguments as any);
-});
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const tool = tools.find(t => t.name === request.params.name);
+    if (!tool) {
+      throw new Error(`Tool not found: ${request.params.name}`);
+    }
+    
+    return await tool.handler(request.params.arguments as any);
+  });
+
+  return server;
+}
 
 export async function runServer() {
+  const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error('Miele MCP Server running on stdio');
