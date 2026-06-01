@@ -17,19 +17,22 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Middleware to verify MCP_API_TOKEN
 function requireMcpToken(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${config.MCP_API_TOKEN}`) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid or missing Bearer token' });
+  const queryToken = req.query.token;
+
+  if (authHeader === `Bearer ${config.MCP_API_TOKEN}` || queryToken === config.MCP_API_TOKEN) {
+    return next();
   }
-  next();
+
+  return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
 }
 
 const transports: Record<string, SSEServerTransport> = {};
 
 app.get('/mcp/sse', requireMcpToken, async (req, res) => {
-  const transport = new SSEServerTransport('/mcp/message', res);
+  const tokenParam = req.query.token ? `?token=${req.query.token}` : '';
+  const transport = new SSEServerTransport(`/mcp/message${tokenParam}`, res);
   transports[transport.sessionId] = transport;
   res.on('close', () => {
     delete transports[transport.sessionId];
