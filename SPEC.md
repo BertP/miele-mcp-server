@@ -217,6 +217,7 @@ MIELE_SCOPES=openid mcs_thirdparty_read mcs_thirdparty_write
 
 DATABASE_PATH=/var/lib/miele-mcp/miele-mcp.sqlite
 SESSION_SECRET=
+MCP_API_TOKEN=
 
 LOG_LEVEL=info
 ```
@@ -605,7 +606,17 @@ CREATE TABLE operation_log (
 
 ## 11. HTTP Endpoints
 
-The MCP server may expose a small HTTP control surface.
+### 11.1 MCP Transport Endpoints (Protected)
+
+Used by external AI clients (like Claude Desktop) to connect to the MCP server over HTTP.
+Requires the HTTP header: `Authorization: Bearer <MCP_API_TOKEN>`
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `GET` | `/mcp/sse` | Establishes the Server-Sent Events (SSE) stream for MCP communication. |
+| `POST` | `/mcp/message?sessionId=<id>` | Endpoint to send JSON-RPC messages to the server. |
+
+### 11.2 Health Endpoint
 
 ### `GET /health`
 
