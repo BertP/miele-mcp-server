@@ -1,0 +1,62 @@
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+
+import { listDevicesTool } from './tools/listDevices';
+import { getDeviceStateTool } from './tools/getDeviceState';
+import { getDeviceActionsTool } from './tools/getDeviceActions';
+import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool } from './tools/otherReadTools';
+
+const server = new Server(
+  {
+    name: 'miele-mcp-server',
+    version: '1.0.0',
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+const tools = [
+  listDevicesTool,
+  getDeviceStateTool,
+  getDeviceActionsTool,
+  getDeviceTool,
+  getDeviceProgramsTool,
+  getDeviceIdentTool,
+];
+
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: tools.map(t => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    })),
+  };
+});
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const tool = tools.find(t => t.name === request.params.name);
+  if (!tool) {
+    throw new Error(`Tool not found: ${request.params.name}`);
+  }
+  
+  return await tool.handler(request.params.arguments as any);
+});
+
+export async function runServer() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('Miele MCP Server running on stdio');
+}
+
+// If this file is executed directly, start the server
+if (require.main === module) {
+  runServer().catch((error) => {
+    console.error('Server error:', error);
+    process.exit(1);
+  });
+}
