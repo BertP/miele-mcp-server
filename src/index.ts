@@ -1,6 +1,7 @@
 import express from 'express';
 import { config } from './config';
 import { oauthRoutes } from './auth/oauthRoutes';
+import { TokenRepository } from './storage/tokenRepository';
 
 const app = express();
 
@@ -11,39 +12,98 @@ app.use('/auth', oauthRoutes);
 
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { createMcpServer } from './mcp/server';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { randomUUID } from 'crypto';
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+import { Logger } from './utils/logger';
 
-function requireMcpToken(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authHeader = req.headers.authorization;
-  const queryToken = req.query.token;
-
-  if (authHeader === `Bearer ${config.MCP_API_TOKEN}` || queryToken === config.MCP_API_TOKEN) {
-    return next();
+// CORS Middleware & SSE Buffering prevention
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-request-id, mcp-session-id');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
   }
 
-  return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
-}
+  Logger.info(`[HTTP] ${req.method} ${req.originalUrl}`);
+  if (req.method === 'POST') {
+    Logger.debug('Body:', req.body);
+  }
+  // Prevent Nginx from buffering SSE streams
+  res.setHeader('X-Accel-Buffering', 'no');
+  next();
+});
 
-const transports: Record<string, SSEServerTransport> = {};
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const tokens = await TokenRepository.getTokens();
+    const now = Math.floor(Date.now() / 1000);
+    const msleeps = tokens ? tokens.expires_at - now : 0;
+    
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      auth: {
+        authenticated: !!tokens,
+        expiresInSeconds: msleeps > 0 ? msleeps : 0,
+        tokenStatus: tokens ? (msleeps > 0 ? 'valid' : 'expired') : 'none'
+      }
+    });
+  } catch (err: any) {
+    Logger.error('Health check failed', { error: err.message });
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+      error: err.message
+    });
+  }
+});
 
-app.get('/mcp/sse', requireMcpToken, async (req, res) => {
-  const tokenParam = req.query.token ? `?token=${req.query.token}` : '';
-  const transport = new SSEServerTransport(`/mcp/message${tokenParam}`, res);
-  transports[transport.sessionId] = transport;
+const streamableTransports: Record<string, StreamableHTTPServerTransport> = {};
+const sseTransports: Record<string, SSEServerTransport> = {};
+
+// MCP API Token Authentication Middleware
+// Checks Bearer token in Authorization header or 'token' query parameter
+app.use('/mcp', (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const queryToken = req.query.token as string | undefined;
+
+  let token: string | undefined;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (queryToken) {
+    token = queryToken;
+  }
+
+  if (!token || token !== config.MCP_API_TOKEN) {
+    res.status(401).json({ error: 'Unauthorized. Valid MCP API token required.' });
+    return;
+  }
+
+  next();
+});
+
+// LEGACY SSE Endpoints (for Claude Desktop)
+app.get('/mcp/sse', async (req, res) => {
+  const transport = new SSEServerTransport('/mcp/message', res);
+  sseTransports[transport.sessionId] = transport;
   res.on('close', () => {
-    delete transports[transport.sessionId];
+    delete sseTransports[transport.sessionId];
   });
   const server = createMcpServer();
   await server.connect(transport);
 });
 
-app.post('/mcp/message', requireMcpToken, async (req, res) => {
+app.post('/mcp/message', async (req, res) => {
   const sessionId = req.query.sessionId as string;
-  const transport = transports[sessionId];
+  const transport = sseTransports[sessionId];
   if (transport) {
     await transport.handlePostMessage(req, res, req.body);
   } else {
@@ -51,8 +111,45 @@ app.post('/mcp/message', requireMcpToken, async (req, res) => {
   }
 });
 
+// STREAMABLE HTTP Endpoints (for Claude Web / newer clients)
+app.all('/mcp/stream', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string;
+  let transport: StreamableHTTPServerTransport;
+
+  if (sessionId && streamableTransports[sessionId]) {
+    transport = streamableTransports[sessionId];
+  } else if (!sessionId && req.method === 'POST') {
+    transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => {
+        streamableTransports[sid] = transport;
+      }
+    });
+
+    transport.onclose = () => {
+      const sid = transport.sessionId;
+      if (sid && streamableTransports[sid]) delete streamableTransports[sid];
+    };
+
+    const server = createMcpServer();
+    await server.connect(transport);
+  } else {
+    return res.status(400).json({ error: 'Invalid session ID or request' });
+  }
+
+  await transport.handleRequest(req, res, req.body);
+});
+
 // Start the server
-app.listen(config.PORT, () => {
-  console.log(`🚀 Miele MCP Server starting in ${config.NODE_ENV} mode on port ${config.PORT}`);
-  console.log(`🔗 Health check available at http://localhost:${config.PORT}/health`);
+app.listen(config.PORT, async () => {
+  Logger.info(`🚀 Miele MCP Server starting in ${config.NODE_ENV} mode on port ${config.PORT}`);
+  Logger.info(`🔗 Health check available at http://localhost:${config.PORT}/health`);
+
+  // Cleanup expired OAuth states on startup and every 10 minutes
+  const cleaned = await TokenRepository.cleanupExpiredStates();
+  if (cleaned > 0) Logger.info(`🧹 Cleaned up ${cleaned} expired OAuth state(s).`);
+  setInterval(async () => {
+    const n = await TokenRepository.cleanupExpiredStates();
+    if (n > 0) Logger.info(`🧹 Cleaned up ${n} expired OAuth state(s).`);
+  }, 10 * 60 * 1000);
 });

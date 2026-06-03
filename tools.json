@@ -1,0 +1,212 @@
+{
+    "result": {
+        "tools": [
+            {
+                "name": "list_devices",
+                "description": "Return all consented Miele devices visible to the authenticated user.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_state",
+                "description": "Return current state of a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_actions",
+                "description": "Return currently available actions for a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device",
+                "description": "Return full details for a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_programs",
+                "description": "Return currently available programs for a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_ident",
+                "description": "Return identity details for a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_all_filling_levels",
+                "description": "Return filling levels for all supported appliances.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_filling_levels",
+                "description": "Return filling levels for a specific device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_failure_details",
+                "description": "Return known failure details for a device.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "get_device_camera",
+                "description": "Retrieve the latest camera image from a supported appliance (e.g. oven camera). Requires mcs_thirdparty_media OAuth scope.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string",
+                            "description": "The unique identifier of the appliance (e.g., from list_devices)"
+                        }
+                    },
+                    "required": [
+                        "deviceId"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "put_device_action",
+                "description": "Send an action (PUT) to a device. Requires mcs_thirdparty_write scope.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string",
+                            "description": "The unique identifier of the appliance"
+                        },
+                        "body": {
+                            "type": "object",
+                            "description": "The JSON payload of the action (e.g. {\"processAction\": 1} to start, {\"processAction\": 2} to stop, {\"targetTemperature\": [{\"zone\": 1, \"value\": 200}]} etc.)"
+                        },
+                        "dryRun": {
+                            "type": "boolean",
+                            "description": "If true, performs a preflight check but does not send the action to the Miele API."
+                        }
+                    },
+                    "required": [
+                        "deviceId",
+                        "body"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            {
+                "name": "start_device_program",
+                "description": "Start a selected program on a supported appliance. Requires mcs_thirdparty_write scope.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "deviceId": {
+                            "type": "string",
+                            "description": "The unique identifier of the appliance"
+                        },
+                        "programId": {
+                            "type": "string",
+                            "description": "The ID of the program to start"
+                        },
+                        "parameters": {
+                            "type": "object",
+                            "description": "Additional parameters for the program"
+                        },
+                        "dryRun": {
+                            "type": "boolean",
+                            "description": "If true, performs a preflight check but does not send the action to the Miele API.",
+                            "default": false
+                        }
+                    },
+                    "required": [
+                        "deviceId",
+                        "programId"
+                    ],
+                    "additionalProperties": false
+                }
+            }
+        ]
+    },
+    "jsonrpc": "2.0",
+    "id": 2
+}

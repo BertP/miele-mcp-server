@@ -20,8 +20,8 @@ RUN mkdir -p /app/data && chown -R node:node /app/data
 
 USER node
 ENV DATABASE_PATH=/app/data/miele-mcp.sqlite
-ENV PORT=3000
+ENV PORT=8089
 
-EXPOSE 3000
+EXPOSE 8089
 
 CMD ["npm", "start"]

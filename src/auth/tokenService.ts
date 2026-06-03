@@ -1,5 +1,6 @@
 import { config } from '../config';
 import { TokenRepository, TokenRecord } from '../storage/tokenRepository';
+import { Logger } from '../utils/logger';
 
 export class TokenService {
   static async refreshAccessToken(refreshToken: string): Promise<TokenRecord | null> {
@@ -18,23 +19,24 @@ export class TokenService {
       });
 
       if (!response.ok) {
-        console.error('Failed to refresh token:', response.status, await response.text());
+        const errorText = await response.text();
+        Logger.error('Failed to refresh token', { status: response.status, errorText });
         return null;
       }
 
       const data = await response.json();
       
       if (!data.access_token || !data.refresh_token || !data.expires_in) {
-        console.error('Invalid token response format from Miele API');
+        Logger.error('Invalid token response format from Miele API');
         return null;
       }
 
       await TokenRepository.saveTokens(data.access_token, data.refresh_token, data.expires_in);
       
-      console.log('✅ Access token refreshed successfully.');
+      Logger.info('✅ Access token refreshed successfully.');
       return await TokenRepository.getTokens();
-    } catch (error) {
-      console.error('Error during token refresh:', error);
+    } catch (error: any) {
+      Logger.error('Error during token refresh', { error: error.message });
       return null;
     }
   }
@@ -46,7 +48,7 @@ export class TokenService {
     const now = Math.floor(Date.now() / 1000);
     // Refresh if expiring within the next 5 minutes
     if (tokens.expires_at < now + 300) {
-      console.log('Token is expired or expiring soon, refreshing...');
+      Logger.info('Token is expired or expiring soon, refreshing...');
       const refreshed = await TokenService.refreshAccessToken(tokens.refresh_token);
       return refreshed ? refreshed.access_token : null;
     }

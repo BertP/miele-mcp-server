@@ -30,19 +30,20 @@ Create a minimal, secure, demo-ready MCP server that connects to the Miele 3rd P
 
 ## Architecture Decision Record
 
-### ADR-001: Use a single Ubuntu server for MVP
+### ADR-001: Use a single Ubuntu server with Docker Compose for MVP
 
-Decision: The MVP runs on one small Ubuntu server.
+Decision: The MVP runs on one small Ubuntu server using Docker Compose.
 
 Rationale:
 - simpler deployment
+- reproducible environment
 - easier debugging
 - enough for internal demo load
 - OAuth callback and MCP server can live together
 
 Implications:
-- local SQLite is acceptable
-- systemd is acceptable
+- local SQLite is acceptable (via volume mount)
+- systemd is not required for the app itself, Docker daemon handles restarts
 - reverse proxy required for HTTPS
 
 ---
@@ -171,7 +172,6 @@ Tasks:
 - implement preflight logic
 - implement `execute_device_action`
 - implement `start_device_program`
-- implement `start_room_cleaning`
 - add dry-run option where useful
 - log operation metadata safely
 
@@ -183,50 +183,45 @@ Exit criteria:
 
 ---
 
-### Phase 5: Demo Client
+### Phase 5: Demo via MCP Inspector
 
 Tasks:
-- create a small CLI or minimal web demo client
-- support login URL display
-- support list devices
-- support read state
-- support safe action demo
-- support error scenario demo
+- Use the official `@modelcontextprotocol/inspector`
+- Configure `npm run inspector` script
+- Document how to test read/write tools via the web UI
 
 Exit criteria:
-- demo can be run without a full AI client
+- Server can be tested without a custom client
+- All tools can be manually invoked
 - demo story is repeatable
-- demo does not depend on model behavior
 
 ---
 
-### Phase 6: Ubuntu Deployment
+### Phase 6: Ubuntu Deployment (Docker Compose)
 
 Tasks:
-- create systemd service
-- document Node.js installation
-- document Caddy or Nginx reverse proxy
+- document Docker Compose setup (done)
+- document reverse proxy (e.g. Caddy/Nginx) for HTTPS
 - document TLS setup
 - document firewall assumptions
-- document backup handling for SQLite
+- document backup handling for SQLite volume
 
 Exit criteria:
-- server runs after reboot
-- logs are accessible
+- server runs after reboot via Docker
+- logs are accessible via docker logs
 - health check works
 - OAuth redirect URI works via HTTPS
 
 ## Target Demo Flow
 
-1. Open demo client.
-2. Click or display Miele login URL.
-3. User logs in and grants access to selected appliances.
-4. Server receives callback.
-5. Demo client calls `list_devices`.
-6. Demo client calls `get_device_state`.
-7. Demo client calls `get_device_actions`.
-8. Demo client executes a safe, supported operation or shows why it is blocked.
-9. Optional: AI client calls the same MCP tools.
+1. Start the server using `npm run inspector`.
+2. Open the displayed URL in the browser.
+3. Open a separate tab/window to authenticate against the Miele OAuth provider and grant consent.
+4. In the MCP Inspector UI, call `list_devices`.
+5. Inspector calls `get_device_state` for a device.
+6. Inspector calls `get_device_actions`.
+7. Inspector executes a safe, supported operation via `put_device_action` (or dry-run).
+8. Show how unsupported operations are blocked.
 
 ## Recommended Demo Script
 
@@ -240,13 +235,11 @@ Before executing any command, the MCP server performs a preflight check. It veri
 
 ## Open Questions
 
-- Which exact Miele tenant/client registration is used?
-- Which redirect URI will be registered?
-- Are we demonstrating read-only or also write operations?
+- Are we demonstrating read-only or also write operations? (Resolved: Write operations implemented)
 - Which real appliance types are available for the demo?
 - Should media/camera access be part of MVP or later?
 - Should the MCP server be exposed remotely or only locally through SSH tunnel/VPN?
-- Which MCP client is preferred for the first demo?
+- Which MCP client is preferred for the first demo? (Resolved: MCP Inspector)
 
 ## Risk Register
 

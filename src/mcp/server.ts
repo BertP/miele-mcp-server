@@ -5,7 +5,10 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { listDevicesTool } from './tools/listDevices';
 import { getDeviceStateTool } from './tools/getDeviceState';
 import { getDeviceActionsTool } from './tools/getDeviceActions';
-import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool } from './tools/otherReadTools';
+import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool, getAllFillingLevelsTool, getDeviceFillingLevelsTool, getFailureDetailsTool } from './tools/otherReadTools';
+import { getDeviceCameraTool } from './tools/getDeviceCamera';
+import { putDeviceActionTool } from './tools/putDeviceAction';
+import { startDeviceProgramTool } from './tools/startDeviceProgram';
 
 export function createMcpServer(): Server {
   const server = new Server(
@@ -27,6 +30,12 @@ export function createMcpServer(): Server {
     getDeviceTool,
     getDeviceProgramsTool,
     getDeviceIdentTool,
+    getAllFillingLevelsTool,
+    getDeviceFillingLevelsTool,
+    getFailureDetailsTool,
+    getDeviceCameraTool,
+    putDeviceActionTool,
+    startDeviceProgramTool,
   ];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {

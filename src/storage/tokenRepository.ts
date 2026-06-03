@@ -66,14 +66,35 @@ export class TokenRepository {
 
   static async consumeState(state: string): Promise<boolean> {
     const now = Math.floor(Date.now() / 1000);
+    const maxAgeSeconds = 600; // 10 minutes TTL for OAuth states
     return new Promise((resolve, reject) => {
       db.run(
-        'UPDATE oauth_states SET consumed_at = ? WHERE state = ? AND consumed_at IS NULL',
-        [now, state],
+        'UPDATE oauth_states SET consumed_at = ? WHERE state = ? AND consumed_at IS NULL AND created_at > ?',
+        [now, state, now - maxAgeSeconds],
         function (err) {
           if (err) reject(err);
           // @ts-ignore: this.changes is provided by sqlite3
           else resolve(this.changes > 0);
+        }
+      );
+    });
+  }
+
+  /**
+   * Remove expired (older than 10 minutes) and already consumed OAuth states.
+   * Should be called periodically or at server startup.
+   */
+  static async cleanupExpiredStates(): Promise<number> {
+    const now = Math.floor(Date.now() / 1000);
+    const maxAgeSeconds = 600; // 10 minutes
+    return new Promise((resolve, reject) => {
+      db.run(
+        'DELETE FROM oauth_states WHERE consumed_at IS NOT NULL OR created_at < ?',
+        [now - maxAgeSeconds],
+        function (err) {
+          if (err) reject(err);
+          // @ts-ignore: this.changes is provided by sqlite3
+          else resolve(this.changes);
         }
       );
     });

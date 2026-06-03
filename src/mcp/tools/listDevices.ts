@@ -16,9 +16,9 @@ export const listDevicesTool = {
         const device = data[deviceId];
         return {
           deviceId,
-          serialNumber: device.ident?.serialNumber || 'Unknown',
+          matNumber: device.ident?.deviceIdentLabel?.matNumber || 'Unknown',
           displayName: device.ident?.deviceIdentLabel?.techType || 'Miele Appliance',
-          type: device.ident?.typ?.value_localized || 'Unknown',
+          type: device.ident?.type?.value_localized || device.ident?.type?.value_raw || 'Unknown',
           online: device.state?.status?.value_raw !== 255 // Miele API uses 255 for offline typically, adjust as needed
         };
       });

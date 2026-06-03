@@ -454,41 +454,6 @@ Preflight requirements:
 - device must be in required remote-control state
 - if `dryRun=true`, no API write is executed
 
-### 7.10 `start_room_cleaning`
-
-Purpose: Start room cleaning for supported robotic vacuum devices.
-
-Input schema:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "deviceId": {
-      "type": "string"
-    },
-    "roomIds": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "dryRun": {
-      "type": "boolean",
-      "default": false
-    }
-  },
-  "required": ["deviceId", "roomIds"],
-  "additionalProperties": false
-}
-```
-
-Preflight requirements:
-
-- device must be permitted
-- device must support room cleaning
-- requested rooms must be known
-- device must be in an executable state
 
 ## 8. Safety Behavior
 
@@ -685,58 +650,24 @@ mcp.example.com {
 }
 ```
 
-## 14. Demo Client Options
+## 14. Demo via MCP Inspector
 
-### Option A: CLI Demo Client
+The official MCP Inspector (`@modelcontextprotocol/inspector`) is the recommended tool for testing and demonstrating the MCP Server.
 
-Best for technical demos.
+### Usage Instructions
 
-Commands:
-
-```bash
-miele-demo login
-miele-demo auth-status
-miele-demo list-devices
-miele-demo get-state --device-id DEVICE_ID
-miele-demo get-actions --device-id DEVICE_ID
-miele-demo execute-action --device-id DEVICE_ID --action ACTION --dry-run
-```
-
-### Option B: Minimal Web Demo Client
-
-Best for stakeholder demos.
-
-Views:
-
-- Login
-- Auth status
-- Device list
-- Device state
-- Available actions
-- Dry-run write operation
-- Execution result
-
-### Option C: AI Client
-
-Best for vision demos after technical validation.
-
-Example prompts:
-
-```text
-Welche Miele Geräte sind verfügbar?
-```
-
-```text
-Zeige mir den aktuellen Status des Geschirrspülers.
-```
-
-```text
-Welche Aktionen sind für den Saugroboter aktuell möglich?
-```
-
-```text
-Führe einen Dry Run für das Starten der Reinigung im Wohnzimmer aus.
-```
+1. Start the inspector using the provided npm script:
+   ```bash
+   npm run inspector
+   ```
+2. Open the URL displayed in your terminal (usually `http://localhost:5173`) in your browser.
+3. In a separate tab, navigate to the Miele OAuth login URL (e.g., `http://localhost:3000/auth/login`) to authenticate and grant consent.
+4. Once authenticated, return to the MCP Inspector.
+5. You can now manually invoke any of the registered tools:
+   - Call `list_devices` to see consented appliances.
+   - Call `get_device_state` with a device ID to view its current state.
+   - Test write operations safely by using `put_device_action` with `dryRun: true`.
+6. Verify that unauthorized devices or unsupported actions are successfully blocked by the server's preflight logic.
 
 ## 15. Testing Strategy
 
@@ -773,7 +704,7 @@ The MVP is accepted when:
 - OAuth login works
 - callback stores tokens
 - token refresh works
-- MCP server starts via systemd
+- MCP server starts via Docker Compose
 - MCP client can list devices
 - MCP client can read device state
 - unauthorized device access is blocked

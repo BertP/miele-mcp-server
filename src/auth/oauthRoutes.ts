@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { config } from '../config';
 import { TokenRepository } from '../storage/tokenRepository';
-import { extractPermittedDevices } from './jwtClaims';
+import { Logger } from '../utils/logger';
 
 const router = Router();
 
@@ -24,7 +24,7 @@ router.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    console.error('OAuth error:', error);
+    Logger.error('OAuth error', { error });
     return res.status(400).send(`Authentication failed: ${error}`);
   }
 
@@ -53,7 +53,8 @@ router.get('/callback', async (req, res) => {
     });
 
     if (!response.ok) {
-      console.error('Token exchange failed:', response.status, await response.text());
+      const errorText = await response.text();
+      Logger.error('Token exchange failed', { status: response.status, errorText });
       return res.status(500).send('Token exchange failed');
     }
 
@@ -65,11 +66,6 @@ router.get('/callback', async (req, res) => {
 
     await TokenRepository.saveTokens(data.access_token, data.refresh_token, data.expires_in);
 
-    // Optional: Extract permitted devices and save to device_permissions table
-    const permittedDevices = extractPermittedDevices(data.access_token);
-    console.log(`Permitted devices found in token: ${permittedDevices.length}`);
-    // MVP: We assume the consent screen handled the filtering for now.
-
     res.send(`
       <html>
         <body>
@@ -78,8 +74,8 @@ router.get('/callback', async (req, res) => {
         </body>
       </html>
     `);
-  } catch (error) {
-    console.error('Callback handling error:', error);
+  } catch (err: any) {
+    Logger.error('Callback handling error', { error: err.message });
     res.status(500).send('Internal Server Error');
   }
 });

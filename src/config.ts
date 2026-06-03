@@ -12,7 +12,7 @@ const envSchema = z.object({
   MIELE_AUTH_URL: z.string().url(),
   MIELE_TOKEN_URL: z.string().url(),
   MIELE_API_BASE_URL: z.string().url().optional(),
-  MIELE_SCOPES: z.string().default('openid mcs_thirdparty_read'),
+  MIELE_SCOPES: z.string().default('openid mcs_thirdparty_read mcs_thirdparty_media mcs_thirdparty_write'),
   DATABASE_PATH: z.string().default('./miele-mcp.sqlite'),
   SESSION_SECRET: z.string().min(8, "SESSION_SECRET must be at least 8 characters long"),
   MCP_API_TOKEN: z.string().min(8).describe('Secure API token required for connecting MCP clients via SSE'),

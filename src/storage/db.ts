@@ -1,11 +1,12 @@
 import sqlite3 from 'sqlite3';
 import { config } from '../config';
+import { Logger } from '../utils/logger';
 
 const db = new sqlite3.Database(config.DATABASE_PATH, (err) => {
   if (err) {
-    console.error('Failed to open SQLite database:', err.message);
+    Logger.error('Failed to open SQLite database', { error: err.message });
   } else {
-    console.log(`✅ Connected to SQLite database at ${config.DATABASE_PATH}`);
+    Logger.info(`✅ Connected to SQLite database at ${config.DATABASE_PATH}`);
   }
 });
 
@@ -28,15 +29,6 @@ const initDb = () => {
         state TEXT PRIMARY KEY,
         created_at INTEGER NOT NULL,
         consumed_at INTEGER
-      )
-    `);
-
-    db.run(`
-      CREATE TABLE IF NOT EXISTS device_permissions (
-        serial_number TEXT PRIMARY KEY,
-        source TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
       )
     `);
 

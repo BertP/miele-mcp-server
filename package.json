@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run --fileParallelism=false",
     "dev": "tsx src/index.ts",
     "build": "tsc && tsc-alias",
     "start": "node dist/index.js",
-    "demo": "tsx scripts/demo.ts"
+    "inspector": "npx @modelcontextprotocol/inspector npx tsx src/mcp/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +34,7 @@
     "tsc-alias": "^1.8.17",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^1.6.0"
   }
 }
