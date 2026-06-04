@@ -2,6 +2,7 @@ import express from 'express';
 import { config } from './config';
 import { oauthRoutes } from './auth/oauthRoutes';
 import { TokenRepository } from './storage/tokenRepository';
+import { TokenService } from './auth/tokenService';
 
 const app = express();
 
@@ -43,6 +44,9 @@ app.use((req, res, next) => {
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
+    // Attempt to get a valid token (triggers refresh if expired)
+    await TokenService.getValidToken();
+    
     const tokens = await TokenRepository.getTokens();
     const now = Math.floor(Date.now() / 1000);
     const msleeps = tokens ? tokens.expires_at - now : 0;
@@ -152,4 +156,26 @@ app.listen(config.PORT, async () => {
     const n = await TokenRepository.cleanupExpiredStates();
     if (n > 0) Logger.info(`🧹 Cleaned up ${n} expired OAuth state(s).`);
   }, 10 * 60 * 1000);
+
+  // Active Miele Token Health: check and refresh token immediately on start
+  try {
+    const token = await TokenService.getValidToken();
+    if (token) {
+      Logger.info('🔑 Miele OAuth token is active and valid.');
+    } else {
+      Logger.warn('⚠️ No active Miele session found. Please authenticate via /auth/login.');
+    }
+  } catch (err: any) {
+    Logger.error('Failed to run initial Miele token health check', { error: err.message });
+  }
+
+  // Periodic Miele token refresh check (runs every 15 minutes to prevent session expiration)
+  setInterval(async () => {
+    try {
+      Logger.debug('Running background Miele token refresh check...');
+      await TokenService.getValidToken();
+    } catch (err: any) {
+      Logger.error('Background Miele token refresh failed', { error: err.message });
+    }
+  }, 15 * 60 * 1000);
 });
