@@ -1,194 +1,194 @@
-# Projekt-Retrospektive: Miele MCP Server MVP
+# Project Retrospective: Miele MCP Server MVP
 
 **Version:** 1.0  
-**Datum:** 2026-06-02  
+**Date:** 2026-06-02  
 **Status:** MVP Feature Complete  
 
 ---
 
-## 1. Zusammenfassung
+## 1. Summary
 
-Der Miele MCP Server verbindet die Miele 3rd Party API (OAuth2, REST) mit dem Model Context Protocol (MCP) und ermöglicht KI-Clients den Zugriff auf Hausgeräte. Der MVP ist funktional vollständig: OAuth2-Login, Token-Verwaltung mit automatischem Refresh, 12 MCP-Tools (Lesen + Schreiben mit Preflight & Dry-Run), Docker-Deployment und Dokumentation sind implementiert.
+The Miele MCP Server connects the Miele 3rd Party API (OAuth2, REST) with the Model Context Protocol (MCP), enabling AI clients to access home appliances. The MVP is functionally complete: OAuth2 login, token management with automatic refresh, 12 MCP tools (read + write with preflight & dry-run), Docker deployment, and documentation are all implemented.
 
-### Was gut gelaufen ist
+### What went well
 
-- **Klare Architektur:** Saubere Trennung in Module (`auth/`, `miele/`, `mcp/`, `storage/`).
-- **Schnelle Iteration:** Vom Bootstrap bis zum lauffähigen MVP in wenigen Commits.
-- **Robuster OAuth-Flow:** State-Validierung, Token-Refresh mit 5-Minuten-Puffer, kein Logging von Secrets.
-- **Preflight-Sicherheit:** Schreiboperationen prüfen vorab die verfügbaren Aktionen/Programme.
-- **Docker-first:** Multi-Stage Build, non-root User, Volume für SQLite-Persistenz.
-- **Zod-Validierung:** Umgebungsvariablen werden beim Start strikt validiert.
+- **Clean architecture:** Clear separation into modules (`auth/`, `miele/`, `mcp/`, `storage/`).
+- **Fast iteration:** From bootstrap to a working MVP in just a few commits.
+- **Robust OAuth flow:** State validation, token refresh with a 5-minute buffer, no logging of secrets.
+- **Preflight safety:** Write operations check available actions/programs upfront.
+- **Docker-first:** Multi-stage build, non-root user, volume for SQLite persistence.
+- **Zod validation:** Environment variables are strictly validated at startup.
 
-### Was verbessert werden sollte
+### What should be improved
 
-Die folgenden Punkte sind nach gründlicher Code-Review als Empfehlungen für das weitere Vorgehen identifiziert worden, geordnet nach Priorität.
-
----
-
-## 2. Sicherheitsbefunde (Priorität: HOCH)
-
-### 2.1 MCP-Endpunkte sind nicht authentifiziert
-
-**Befund:** Der `MCP_API_TOKEN` wird in `config.ts` als Pflichtfeld definiert, aber in `index.ts` wird er **nirgends geprüft**. Die SSE- und Streamable-HTTP-Endpunkte (`/mcp/sse`, `/mcp/message`, `/mcp/stream`) sind für jeden erreichbar, der die URL kennt.
-
-**Risiko:** Jeder kann ohne Token MCP-Tools aufrufen und damit Geräte steuern.
-
-**Empfehlung:** Middleware einbauen, die `Authorization: Bearer <MCP_API_TOKEN>` auf allen `/mcp/*`-Routen prüft.
-
-### 2.2 Schwache Secrets in `.env.example`
-
-**Befund:** Die `.env.example` enthält Werte wie `SESSION_SECRET=super_secret_session_key` und `MCP_API_TOKEN=your-very-secure-password-123`. In der produktiven `.env` stehen ebenfalls schwache, leicht erratbare Werte (`super_secret_session_key`, `super_secret_mcp_token_2026`).
-
-**Risiko:** Werden diese Werte im Deployment übernommen, sind Session-Hijacking und unautorisierter MCP-Zugriff trivial.
-
-**Empfehlung:** 
-- In `.env.example` Platzhalter ohne echte Werte verwenden (z.B. `SESSION_SECRET=<generate-with-openssl-rand-hex-32>`).
-- Produktive Secrets mit `openssl rand -hex 32` erzeugen.
-
-### 2.3 OAuth-Endpunkte ohne Rate-Limiting
-
-**Befund:** `/auth/login` erzeugt bei jedem Aufruf einen neuen `oauth_states`-Eintrag. Es gibt kein Rate-Limiting und keine Aufräum-Logik für alte, unverbrauchte States.
-
-**Risiko:** Denial-of-Service durch Fluten der SQLite-Tabelle; State-Exhaustion-Angriffe.
-
-**Empfehlung:** 
-- States mit TTL versehen (z.B. 10 Minuten) und per Cronjob/Startup aufräumen.
-- Rate-Limiting auf `/auth/*`-Routen (z.B. `express-rate-limit`).
-
-### 2.4 Hardcoded IP-Adresse in Logs
-
-**Befund:** In `index.ts` Zeile 89 steht `http://192.168.1.251:${config.PORT}/health` hardcoded. Das sollte dynamisch aus der Konfiguration kommen.
+The following items were identified through thorough code review as recommendations for next steps, ordered by priority.
 
 ---
 
-## 3. Architektur-Befunde (Priorität: MITTEL)
+## 2. Security Findings (Priority: HIGH)
 
-### 3.1 Port-Mismatch in Docker Compose vs. Dockerfile
+### 2.1 MCP endpoints are unauthenticated
 
-**Befund:** Das `Dockerfile` setzt `ENV PORT=3000` und `EXPOSE 3000`, während `docker-compose.yml` den Port `8089:8089` mapped. Die `.env` setzt `PORT=8089`. Im Container wird der Port aus der `.env` (über `env_file`) korrekt geladen, aber das `EXPOSE 3000` im Dockerfile ist irreführend.
+**Finding:** The `MCP_API_TOKEN` is defined as a required field in `config.ts`, but in `index.ts` it is **never checked**. The SSE and Streamable HTTP endpoints (`/mcp/sse`, `/mcp/message`, `/mcp/stream`) are accessible to anyone who knows the URL.
 
-**Empfehlung:** `EXPOSE 3000` im Dockerfile entfernen oder auf `EXPOSE 8089` ändern. Alternativ `EXPOSE` weglassen und rein über docker-compose steuern.
+**Risk:** Anyone can invoke MCP tools and control appliances without a token.
 
-### 3.2 Duale MCP-Transporte ohne klare Abgrenzung
+**Recommendation:** Add middleware that validates `Authorization: Bearer <MCP_API_TOKEN>` on all `/mcp/*` routes.
 
-**Befund:** `index.ts` implementiert drei verschiedene MCP-Transporte parallel:
+### 2.2 Weak secrets in `.env.example`
+
+**Finding:** `.env.example` contains values like `SESSION_SECRET=super_secret_session_key` and `MCP_API_TOKEN=your-very-secure-password-123`. The production `.env` also contained similarly weak, easily guessable values.
+
+**Risk:** If these values are used in deployment, session hijacking and unauthorized MCP access are trivial.
+
+**Recommendation:**
+- Use genuine placeholders in `.env.example` (e.g. `SESSION_SECRET=<generate-with-openssl-rand-hex-32>`).
+- Generate production secrets with `openssl rand -hex 32`.
+
+### 2.3 OAuth endpoints without rate limiting
+
+**Finding:** `/auth/login` creates a new `oauth_states` entry on every call. There is no rate limiting and no cleanup logic for old, unconsumed states.
+
+**Risk:** Denial-of-service by flooding the SQLite table; state exhaustion attacks.
+
+**Recommendation:**
+- Give states a TTL (e.g. 10 minutes) and clean them up via cron/startup.
+- Add rate limiting on `/auth/*` routes (e.g. `express-rate-limit`).
+
+### 2.4 Hardcoded IP address in logs
+
+**Finding:** In `index.ts` line 89, `http://192.168.1.251:${config.PORT}/health` is hardcoded. This should be derived dynamically from configuration.
+
+---
+
+## 3. Architecture Findings (Priority: MEDIUM)
+
+### 3.1 Port mismatch in Docker Compose vs. Dockerfile
+
+**Finding:** The `Dockerfile` sets `ENV PORT=3000` and `EXPOSE 3000`, while `docker-compose.yml` mapped port `8089:8089`. The `.env` sets `PORT=8089`. The container loads the port correctly from `.env` (via `env_file`), but `EXPOSE 3000` in the Dockerfile is misleading.
+
+**Recommendation:** Remove `EXPOSE 3000` from the Dockerfile or change it to `EXPOSE 8089`. Alternatively, omit `EXPOSE` entirely and control it solely through docker-compose.
+
+### 3.2 Dual MCP transports without clear separation
+
+**Finding:** `index.ts` implements three different MCP transports in parallel:
 1. Legacy SSE (`/mcp/sse` + `/mcp/message`)
 2. Streamable HTTP (`/mcp/stream`)
 3. Stdio (in `server.ts` via `runServer()`)
 
-Die Stdio-Variante in `server.ts` wird durch `npm run inspector` genutzt, während die HTTP-Varianten für den Produktivbetrieb gedacht sind. Das ist nicht dokumentiert.
+The Stdio variant in `server.ts` is used by `npm run inspector`, while the HTTP variants are for production. This is not documented.
 
-**Empfehlung:** Im README oder der SPEC klar dokumentieren, welcher Transport für welchen Anwendungsfall gedacht ist. Den `require.main === module`-Block in `server.ts` mit einem Kommentar versehen.
+**Recommendation:** Clearly document in the README or SPEC which transport is intended for which use case. Add a comment to the `require.main === module` block in `server.ts`.
 
-### 3.3 Jede SSE-Verbindung erzeugt eine neue Server-Instanz
+### 3.3 Each SSE connection creates a new server instance
 
-**Befund:** In `index.ts` wird bei jedem Aufruf von `/mcp/sse` und `/mcp/stream` (neue Session) ein neuer `createMcpServer()` erstellt. Das ist für den MVP akzeptabel, skaliert aber nicht.
+**Finding:** In `index.ts`, a new `createMcpServer()` is created on every call to `/mcp/sse` and `/mcp/stream` (new session). This is acceptable for the MVP but does not scale.
 
-**Empfehlung:** Für das nächste Release evaluieren, ob eine einzelne Server-Instanz mit mehreren Transports genutzt werden kann.
+**Recommendation:** Evaluate for the next release whether a single server instance with multiple transports can be used.
 
-### 3.4 `operation_log`-Tabelle wird nie beschrieben
+### 3.4 `operation_log` table is never written to
 
-**Befund:** Die `operation_log`-Tabelle existiert im Schema (`db.ts`), wird aber von keinem Code beschrieben. Die Preflight-Ergebnisse und Schreiboperationen werden nicht protokolliert.
+**Finding:** The `operation_log` table exists in the schema (`db.ts`), but no code writes to it. Preflight results and write operations are not logged.
 
-**Empfehlung:** Jede Preflight-Entscheidung (erlaubt/blockiert) und jede ausgeführte Schreiboperation im `operation_log` festhalten. Das ist essenziell für Audits und Fehlersuche.
+**Recommendation:** Record every preflight decision (allowed/blocked) and every executed write operation in `operation_log`. This is essential for audits and debugging.
 
-### 3.5 `device_permissions`-Tabelle wird nie genutzt
+### 3.5 `device_permissions` table is never used
 
-**Befund:** Die Tabelle `device_permissions` existiert im Schema, aber `extractPermittedDevices()` in `jwtClaims.ts` gibt immer `[]` zurück (Zeile 35: Fallback auf leeres Array). Die Ergebnisse werden in `oauthRoutes.ts` nur geloggt, aber nie gespeichert.
+**Finding:** The `device_permissions` table exists in the schema, but `extractPermittedDevices()` in `jwtClaims.ts` always returns `[]` (line 35: fallback to empty array). The results in `oauthRoutes.ts` are only logged, never stored.
 
-**Empfehlung:** Entweder die tatsächliche JWT-Claim-Struktur von Miele analysieren und die Geräteberechtigungen korrekt extrahieren und speichern, oder die Tabelle und den Code entfernen, um Verwirrung zu vermeiden.
-
----
-
-## 4. Code-Qualität (Priorität: MITTEL)
-
-### 4.1 Keine automatisierten Tests
-
-**Befund:** `npm test` schlägt mit einem Platzhalter-Fehler fehl. Es gibt keine Unit- oder Integrationstests.
-
-**Empfehlung:** Mindestens folgende Bereiche testen:
-- Preflight-Logik in `putDeviceAction.ts` (blockiert/erlaubt korrekt)
-- Token-Refresh-Logik in `tokenService.ts`
-- OAuth-State-Validierung in `tokenRepository.ts`
-- Config-Validierung mit fehlenden/ungültigen Werten
-
-### 4.2 Konsistenz der Tool-Handler-Signaturen
-
-**Befund:** Die meisten Tools definieren `handler` als Methode (`async handler(args)`), aber `getDeviceCameraTool` nutzt eine Arrow-Function (`handler: async (args) =>`). Die `inputSchema`-Objekte verwenden teilweise `additionalProperties: false`, teilweise nicht.
-
-**Empfehlung:** Einheitliches Pattern für alle Tools etablieren. Alle Schemas sollten `additionalProperties: false` setzen.
-
-### 4.3 Preflight-Validierung in `startDeviceProgram.ts`
-
-**Befund:** Die Preflight-Prüfung geht davon aus, dass die API ein Array mit Objekten zurückgibt, die `programId` enthalten. Das tatsächliche Antwortformat der Miele API muss validiert werden.
-
-**Empfehlung:** Mit echten API-Antworten testen und den Vergleich anpassen. Defensive Prüfung hinzufügen für den Fall, dass die API ein anderes Format liefert.
-
-### 4.4 Error-Handling ist nicht einheitlich
-
-**Befund:** Manche Tools setzen `isError: true` bei Fehlern, andere nicht (z.B. Preflight-Failures geben normale Responses ohne `isError` zurück).
-
-**Empfehlung:** Klare Konvention: Preflight-Blockaden sind keine Fehler (kein `isError`), aber technische Fehler (Netzwerk, Auth) setzen `isError: true`. Das ist aktuell teilweise so, sollte aber explizit dokumentiert werden.
+**Recommendation:** Either analyze the actual JWT claim structure from Miele, correctly extract and store device permissions, or remove the table and code to avoid confusion.
 
 ---
 
-## 5. Dokumentation (Priorität: NIEDRIG)
+## 4. Code Quality (Priority: MEDIUM)
 
-### 5.1 `appliance-sentinel-config.md` ist veraltet
+### 4.1 No automated tests
 
-**Befund:** Die Liste der verfügbaren Tools in dieser Datei (Zeile 41-44) ist unvollständig. Es fehlen `get_device_camera`, `put_device_action`, `start_device_program`, `get_all_filling_levels`, `get_device_filling_levels`, `get_failure_details`.
+**Finding:** `npm test` fails with a placeholder error. There are no unit or integration tests.
 
-**Empfehlung:** Tool-Liste aktualisieren oder aus dieser Datei entfernen und auf die zentrale SPEC verweisen.
+**Recommendation:** At minimum, test the following areas:
+- Preflight logic in `putDeviceAction.ts` (blocked/allowed correctly)
+- Token refresh logic in `tokenService.ts`
+- OAuth state validation in `tokenRepository.ts`
+- Config validation with missing/invalid values
 
-### 5.2 `USE_CASES.md` referenziert keine neuen Tools
+### 4.2 Inconsistency in tool handler signatures
 
-**Befund:** Das Dokument erwähnt `start_device_program`, `get_all_filling_levels`, `get_device_filling_levels` und `get_failure_details` nicht.
+**Finding:** Most tools define `handler` as a method (`async handler(args)`), but `getDeviceCameraTool` uses an arrow function (`handler: async (args) =>`). The `inputSchema` objects sometimes include `additionalProperties: false`, sometimes not.
 
-**Empfehlung:** Aktualisieren mit Szenarien für diese neuen Tools (z.B. "Ist der Klarspüler noch voll?" → `get_device_filling_levels`).
+**Recommendation:** Establish a uniform pattern for all tools. All schemas should set `additionalProperties: false`.
 
-### 5.3 SPEC.md enthält veraltete Acceptance Criteria
+### 4.3 Preflight validation in `startDeviceProgram.ts`
 
-**Befund:** Zeile 776 sagt "MCP server starts via systemd", was nicht mehr zutrifft (Docker Compose).
+**Finding:** The preflight check assumes the API returns an array of objects containing `programId`. The actual response format from the Miele API must be validated.
 
-**Empfehlung:** Auf "MCP server starts via Docker Compose" ändern.
+**Recommendation:** Test with real API responses and adapt the comparison accordingly. Add defensive checks for the case where the API returns a different format.
 
----
+### 4.4 Error handling is not uniform
 
-## 6. Empfohlene Roadmap
+**Finding:** Some tools set `isError: true` on errors, others do not (e.g. preflight failures return normal responses without `isError`).
 
-### Phase A: Sicherheitshärtung ✅ (abgeschlossen 2026-06-02)
-
-| # | Aufgabe | Status |
-|---|---------|--------|
-| A1 | MCP-API-Token-Authentifizierung als Middleware implementieren | ✅ Erledigt |
-| A2 | Produktive Secrets rotieren und `.env.example` bereinigen | ✅ Erledigt |
-| A3 | OAuth-State-TTL und Aufräumlogik einbauen | ✅ Erledigt |
-| A4 | Hardcoded IP-Adresse entfernen | ✅ Erledigt |
-
-### Phase B: Betriebsreife
-
-| # | Aufgabe | Aufwand |
-|---|---------|--------|
-| B1 | `operation_log` für alle Write-Operationen befüllen | Mittel |
-| B2 | Port-Konfiguration in Dockerfile/Compose vereinheitlichen | Klein |
-| B3 | Automatisierte Tests (Jest/Vitest) für Kernlogik aufsetzen | Mittel |
-| B4 | Tool-Handler-Signaturen und Schemas vereinheitlichen | Klein |
-
-### Phase C: Erweiterung
-
-| # | Aufgabe | Aufwand |
-|---|---------|--------|
-| C1 | `device_permissions` korrekt aus JWT Claims befüllen oder entfernen | Mittel |
-| C2 | Dokumentation aktualisieren (Sentinel-Config, Use Cases, SPEC) | Klein |
-| C3 | Structured Logging (z.B. mit Pino) statt `console.log` | Mittel |
-| C4 | Health-Check erweitern (DB-Konnektivität, Token-Status) | Klein |
+**Recommendation:** Clear convention: preflight blocks are not errors (no `isError`), but technical failures (network, auth) set `isError: true`. This is currently partially the case but should be explicitly documented.
 
 ---
 
-## 7. Fazit
+## 5. Documentation (Priority: LOW)
 
-Das MVP erreicht seinen Zweck: Es verbindet Miele-Geräte sicher über OAuth2 mit MCP-Clients und bietet sowohl Lese- als auch Schreibzugriff mit Sicherheitsprüfungen. Die Architektur ist klar strukturiert und erweiterbar.
+### 5.1 `appliance-sentinel-config.md` is outdated
 
-Die **kritischste offene Flanke** ist die fehlende Authentifizierung auf den MCP-Endpunkten selbst (Punkt 2.1). Da der Server öffentlich erreichbar ist (`mielemcp.never2sunny.eu`), sollte dies als erstes adressiert werden.
+**Finding:** The list of available tools in this file (lines 41–44) is incomplete. Missing: `get_device_camera`, `put_device_action`, `start_device_program`, `get_all_filling_levels`, `get_device_filling_levels`, `get_failure_details`.
 
-Alle weiteren Punkte sind Verbesserungen, die den Server robuster, wartbarer und produktionsreifer machen, aber das Kernfunktionieren nicht beeinträchtigen.
+**Recommendation:** Update the tool list or remove it from this file and reference the central SPEC instead.
+
+### 5.2 `USE_CASES.md` does not reference new tools
+
+**Finding:** The document does not mention `start_device_program`, `get_all_filling_levels`, `get_device_filling_levels`, or `get_failure_details`.
+
+**Recommendation:** Update with scenarios for these new tools (e.g. "Is the rinse aid still full?" → `get_device_filling_levels`).
+
+### 5.3 SPEC.md contains outdated acceptance criteria
+
+**Finding:** Line 776 states "MCP server starts via systemd", which is no longer correct (Docker Compose).
+
+**Recommendation:** Change to "MCP server starts via Docker Compose".
+
+---
+
+## 6. Recommended Roadmap
+
+### Phase A: Security Hardening ✅ (completed 2026-06-02)
+
+| # | Task | Status |
+|---|------|--------|
+| A1 | Implement MCP API token authentication as middleware | ✅ Done |
+| A2 | Rotate production secrets and clean up `.env.example` | ✅ Done |
+| A3 | Add OAuth state TTL and cleanup logic | ✅ Done |
+| A4 | Remove hardcoded IP address | ✅ Done |
+
+### Phase B: Production Readiness
+
+| # | Task | Effort |
+|---|------|--------|
+| B1 | Populate `operation_log` for all write operations | Medium |
+| B2 | Unify port configuration in Dockerfile/Compose | Small |
+| B3 | Set up automated tests (Jest/Vitest) for core logic | Medium |
+| B4 | Unify tool handler signatures and schemas | Small |
+
+### Phase C: Extensions
+
+| # | Task | Effort |
+|---|------|--------|
+| C1 | Correctly populate `device_permissions` from JWT claims or remove | Medium |
+| C2 | Update documentation (Sentinel Config, Use Cases, SPEC) | Small |
+| C3 | Structured logging (e.g. with Pino) instead of `console.log` | Medium |
+| C4 | Extend health check (DB connectivity, token status) | Small |
+
+---
+
+## 7. Conclusion
+
+The MVP achieves its purpose: it securely connects Miele appliances to MCP clients via OAuth2 and provides both read and write access with safety checks. The architecture is clearly structured and extensible.
+
+The **most critical open vulnerability** was the missing authentication on the MCP endpoints themselves (point 2.1). Since the server is publicly accessible (`mielemcp.never2sunny.eu`), this was addressed first.
+
+All remaining items are improvements that make the server more robust, maintainable, and production-ready, but do not affect core functionality.

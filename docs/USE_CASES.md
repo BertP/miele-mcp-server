@@ -1,60 +1,61 @@
-# 🍳 Dein smarter Sous-Chef: Der Miele MCP-Server für KI-Agenten
+# 🍳 Your Smart Sous-Chef: The Miele MCP Server for AI Agents
 
-Stell dir vor, du sitzt im Wohnzimmer oder bist unterwegs und chattest mit deiner bevorzugten KI (wie Claude). Du fragst dich, ob die Wäsche schon fertig ist oder was du mit den Resten im Kühlschrank kochen könntest – und die KI weiß nicht nur die Antwort, sondern schaut für dich direkt nach, schaltet den Ofen vor oder holt dir ein Live-Bild vom Braten!
+Imagine sitting in your living room or out and about, chatting with your preferred AI (like Claude). You wonder whether the laundry is done or what you could cook with the leftovers in the fridge — and the AI not only knows the answer but actually checks for you, preheats the oven, or pulls up a live image of your roast!
 
-Genau das ermöglicht dieser **Miele MCP-Server**. Er fungiert als unsichtbarer Dolmetscher zwischen deiner Künstlichen Intelligenz und deinen Miele-Hausgeräten.
-
----
-
-## 🌟 Was kann die KI dank des Servers?
-
-Wenn du den Server mit deiner KI verbindest (z. B. in Claude Desktop), erlernt die KI völlig neue "Fähigkeiten" (Tools). Sie kann dann in Echtzeit auf deine Miele-Geräte zugreifen. 
-
-Hier sind ein paar greifbare Beispiele, was du deine KI fragen oder für dich erledigen lassen kannst:
-
-### 1. 🔍 Geräte-Inventur & Statusabfragen
-Die KI kann alle deine verbundenen Geräte auflisten und deren Zustand überprüfen.
-* **Du fragst:** *"Claude, welche meiner Miele-Geräte laufen gerade?"*
-* **Die KI tut:** Sie ruft das Tool `list_devices` auf, sieht z.B. dass der Backofen (H7860BP) und die Waschmaschine (WCR890) online sind. Dann nutzt sie `get_device_state`, um dir zu antworten: *"Die Waschmaschine läuft gerade im Programm 'Baumwolle' und ist in 24 Minuten fertig. Der Backofen ist im Standby."*
-
-### 2. 📸 Live-Bilder aus dem Backofen (FoodView)
-Hat dein Backofen eine integrierte Kamera? Die KI kann einen Blick riskieren!
-* **Du fragst:** *"Schau mal in den Ofen. Ist die Kruste vom Braten schon knusprig genug?"*
-* **Die KI tut:** Sie nutzt `get_device_camera`, lädt das aktuellste Bild aus dem Garraum herunter, analysiert das Bild direkt im Chat und antwortet: *"Der Braten sieht schon hervorragend aus! Die Kruste hat eine schöne goldbraune Farbe. Ich würde empfehlen, ihn in 10 Minuten herauszunehmen."*
-
-### 3. 🎮 Fernsteuerung & Aktionen (Smart Home Magic)
-Die KI kann (sofern du es erlaubst und das Gerät es unterstützt) Aktionen ausführen.
-* **Du fragst:** *"Ich komme in 30 Minuten nach Hause. Kannst du den Backofen schon mal auf 200°C Ober-/Unterhitze vorheizen?"*
-* **Die KI tut:** Sie nutzt `put_device_action`, um den Ofen einzuschalten und die Temperatur zu setzen. Sie bestätigt dir: *"Erledigt! Der Ofen heizt jetzt auf 200°C auf."*
-
-### 4. 🍽️ KI-Rezeptplanung mit direkter Ausführung
-Da die KI Zugriff auf die verfügbaren Programme deiner Geräte hat, wird sie zum ultimativen Küchenhelfer.
-* **Du fragst:** *"Ich habe Lachs und Spargel. Wie bereite ich das am besten in meinem Miele-Dampfgarer zu?"*
-* **Die KI tut:** Sie prüft mit `get_device_programs`, welche Gar-Programme dein spezifisches Modell unterstützt. Dann erstellt sie dir ein Rezept und fragt: *"Soll ich das Programm 'Dampfgaren' für 15 Minuten bei 85°C direkt an den Dampfgarer senden?"*
+That is exactly what this **Miele MCP Server** makes possible. It acts as an invisible interpreter between your AI and your Miele home appliances.
 
 ---
 
-## 🛠️ Welche Tools stehen der KI genau zur Verfügung?
+## 🌟 What can the AI do thanks to the server?
 
-Technisch gesehen rüstet der Server deine KI mit folgenden Werkzeugen aus:
+Once you connect the server to your AI (e.g. in Claude Desktop), the AI gains entirely new "skills" (tools). It can then access your Miele appliances in real time.
 
-* `list_devices` - Findet alle Geräte und deren IDs (Waschmaschine, Ofen, Kaffeevollautomat etc.).
-* `get_device_state` - Liest Temperaturen, Restlaufzeiten, Status (An/Aus/Tür offen) und Fehlercodes aus.
-* `get_device_programs` - Zeigt der KI, welche Programme ein Gerät beherrscht (z.B. Espresso, Intensiv 75°C, Heißluft Plus).
-* `get_device_actions` - Fragt ab, was man *jetzt gerade* mit dem Gerät tun darf (z.B. Starten, Stoppen, Licht anmachen).
-* `put_device_action` - Sendet Befehle an das Gerät (Gerät einschalten, Programm starten, Licht steuern).
-* `get_device_camera` - Holt hochauflösende Kamerabilder direkt aus dem Garraum (für kompatible Backöfen).
-* `start_device_program` - Startet ein bestimmtes Gar- oder Waschprogramm direkt auf dem Gerät.
-* `get_all_filling_levels` - Prüft die Füllstände aller kompatiblen Geräte auf einmal (z. B. Salz, Klarspüler, Waschmittel).
-* `get_device_filling_levels` - Zeigt den genauen Füllstand der Betriebsmittel für ein bestimmtes Gerät.
-* `get_failure_details` - Liefert detaillierte Informationen zu Fehlermeldungen des Geräts bei Störungen.
+Here are a few concrete examples of what you can ask your AI or have it do for you:
 
-## 🔒 Sicherheit & Privatsphäre
+### 1. 🔍 Appliance inventory & status queries
+The AI can list all your connected appliances and check their current state.
+* **You ask:** *"Claude, which of my Miele appliances are running right now?"*
+* **The AI does:** It calls the `list_devices` tool, sees for example that the oven (H7860BP) and the washing machine (WCR890) are online. It then uses `get_device_state` to respond: *"The washing machine is currently running the 'Cotton' program and will be done in 24 minutes. The oven is on standby."*
 
-* **OAuth-Autorisierung:** Der Server greift über die offizielle *Miele 3rd Party API* auf deine Geräte zu. Du loggst dich einmalig sicher über Miele ein.
-* **Automatisches Token-Refreshing:** Der Server kümmert sich im Hintergrund unsichtbar darum, dass die Verbindung dauerhaft bestehen bleibt.
-* **Lokale Kontrolle:** Der Server läuft auf deinem eigenen System (192.168.1.251) und gibt seine Daten nur an die von dir autorisierte KI weiter.
+### 2. 📸 Live images from the oven (FoodView)
+Does your oven have a built-in camera? The AI can take a look!
+* **You ask:** *"Take a peek in the oven. Is the crust on the roast crispy enough?"*
+* **The AI does:** It uses `get_device_camera`, downloads the latest image from the oven cavity, analyses it directly in the chat, and responds: *"The roast looks excellent! The crust has a beautiful golden-brown colour. I'd recommend taking it out in 10 minutes."*
+
+### 3. 🎮 Remote control & actions (Smart Home magic)
+The AI can (with your permission and appliance support) execute actions.
+* **You ask:** *"I'll be home in 30 minutes. Can you preheat the oven to 200°C top/bottom heat?"*
+* **The AI does:** It uses `put_device_action` to switch on the oven and set the temperature, confirming: *"Done! The oven is now heating to 200°C."*
+
+### 4. 🍽️ AI recipe planning with direct execution
+Because the AI has access to your appliances' available programs, it becomes the ultimate kitchen assistant.
+* **You ask:** *"I have salmon and asparagus. What's the best way to prepare them in my Miele steam oven?"*
+* **The AI does:** It checks with `get_device_programs` which cooking programs your specific model supports. It then creates a recipe and asks: *"Shall I send the 'Steam Cooking' program for 15 minutes at 85°C directly to the steam oven?"*
 
 ---
 
-**Fazit:** Mit diesem Server machst du deine KI zum intelligenten Butler, der nicht nur Ratschläge gibt, sondern die Realität deines Zuhauses wahrnimmt und mit ihr interagiert!
+## 🛠️ Which tools are available to the AI?
+
+Technically, the server equips your AI with the following tools:
+
+* `list_devices` — Finds all appliances and their IDs (washing machine, oven, coffee machine, etc.).
+* `get_device_state` — Reads temperatures, remaining times, status (on/off/door open), and error codes.
+* `get_device_programs` — Shows the AI which programs a device supports (e.g. espresso, intensive 75°C, convection plus).
+* `get_device_actions` — Queries what can be done with the device *right now* (e.g. start, stop, turn light on).
+* `put_device_action` — Sends commands to the device (switch on, start program, control light).
+* `get_device_camera` — Retrieves high-resolution camera images directly from the oven cavity (for compatible ovens).
+* `start_device_program` — Starts a specific cooking or washing program directly on the device.
+* `get_all_filling_levels` — Checks the filling levels of all compatible devices at once (e.g. salt, rinse aid, detergent).
+* `get_device_filling_levels` — Shows the precise consumable levels for a specific device.
+* `get_failure_details` — Provides detailed information about device error messages when a fault occurs.
+* `get_operation_log` — Retrieves the recent write operations and their preflight results (audit log).
+
+## 🔒 Security & Privacy
+
+* **OAuth authorization:** The server accesses your appliances via the official *Miele 3rd Party API*. You log in securely via Miele once.
+* **Automatic token refreshing:** The server invisibly takes care of keeping the connection alive in the background.
+* **Local control:** The server runs on your own system (192.168.1.251) and only shares data with the AI you have authorized.
+
+---
+
+**Conclusion:** With this server, your AI becomes an intelligent butler — one that not only gives advice but perceives and interacts with the reality of your home!

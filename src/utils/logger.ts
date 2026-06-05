@@ -11,12 +11,12 @@ const levelSeverity: Record<LogLevel, number> = {
 
 export class Logger {
   private static shouldLog(level: LogLevel): boolean {
-    const configuredLevel = (config?.LOG_LEVEL || 'info') as LogLevel;
+    const configuredLevel = (config.LOG_LEVEL || 'info') as LogLevel;
     return levelSeverity[level] >= levelSeverity[configuredLevel];
   }
 
   private static formatLog(level: LogLevel, message: string, context?: any): string {
-    const isProduction = config?.NODE_ENV === 'production';
+    const isProduction = config.NODE_ENV === 'production';
     const timestamp = new Date().toISOString();
 
     if (isProduction) {

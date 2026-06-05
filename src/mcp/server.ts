@@ -1,6 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import packageJson from '../../package.json';
 
 import { listDevicesTool } from './tools/listDevices';
 import { getDeviceStateTool } from './tools/getDeviceState';
@@ -14,8 +15,8 @@ import { getOperationLogTool } from './tools/getOperationLog';
 export function createMcpServer(): Server {
   const server = new Server(
     {
-      name: 'miele-mcp-server',
-      version: '1.0.0',
+      name: packageJson.name,
+      version: packageJson.version,
     },
     {
       capabilities: {

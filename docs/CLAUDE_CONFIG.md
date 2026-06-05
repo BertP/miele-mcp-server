@@ -1,29 +1,29 @@
 # Claude Desktop Integration – Miele MCP Server
 
-## Übersicht
+## Overview
 
-Der Miele MCP Server läuft auf **`192.168.1.251:8089`** und ist öffentlich erreichbar unter **`https://mielemcp.never2sunny.eu`**. Dieser Server stellt 12 MCP-Tools bereit, mit denen Claude auf Miele-Hausgeräte zugreifen kann.
-
----
-
-## Voraussetzung: Miele OAuth-Login
-
-**Einmalig** muss die Verbindung zu Miele autorisiert werden:
-
-1. Öffne im Browser: `https://mielemcp.never2sunny.eu/auth/login`
-2. Logge dich mit deinem Miele-Konto ein und erlaube den Zugriff auf deine Geräte.
-3. Du wirst nach erfolgreicher Anmeldung auf eine Erfolgsseite weitergeleitet.
-4. Der Server speichert die Tokens dauerhaft in der SQLite-Datenbank und erneuert sie automatisch.
-
-Status jederzeit prüfbar unter: `https://mielemcp.never2sunny.eu/health`
+The Miele MCP Server runs on **`192.168.1.251:8089`** and is publicly accessible at **`https://mielemcp.never2sunny.eu`**. It exposes 13 MCP tools that allow Claude to interact with Miele home appliances.
 
 ---
 
-## Claude Desktop Konfiguration
+## Prerequisite: Miele OAuth Login
 
-### Konfigurationsdatei finden
+**Once**, the connection to Miele must be authorized:
 
-| Betriebssystem | Pfad |
+1. Open in your browser: `https://mielemcp.never2sunny.eu/auth/login`
+2. Log in with your Miele account and grant access to your appliances.
+3. After successful login you will be redirected to a success page.
+4. The server stores the tokens persistently in the SQLite database and refreshes them automatically.
+
+Authentication status can be checked at any time: `https://mielemcp.never2sunny.eu/health`
+
+---
+
+## Claude Desktop Configuration
+
+### Locating the configuration file
+
+| Operating System | Path |
 |---|---|
 | **Windows** | `%APPDATA%\Claude\claude_desktop_config.json` |
 | **macOS** | `~/Library/Application Support/Claude/claude_desktop_config.json` |
@@ -31,9 +31,9 @@ Status jederzeit prüfbar unter: `https://mielemcp.never2sunny.eu/health`
 
 ---
 
-### Option A: Verbindung über SSE (Legacy – **nicht empfohlen**)
+### Option A: SSE connection (Legacy – **not recommended**)
 
-> ⚠️ **Veraltet:** Der Miele MCP Server unterstützt **keinen** SSE-Endpunkt (`/mcp/sse`). Diese Option führt zu einer endlosen Reconnect-Schleife und Token-Refresh-Fehlern. Bitte Option C verwenden.
+> ⚠️ **Deprecated:** The Miele MCP Server supports the SSE endpoint (`/mcp/sse`) only for development tooling (MCP Inspector). Using it from Claude Desktop results in an endless reconnect loop and token-refresh errors. Please use Option C instead.
 
 ```json
 {
@@ -46,13 +46,13 @@ Status jederzeit prüfbar unter: `https://mielemcp.never2sunny.eu/health`
 }
 ```
 
-> **Hinweis:** Der Token `YOUR_MCP_API_TOKEN` entspricht dem `MCP_API_TOKEN` in der `.env`-Datei auf dem Server. Bei Rotation des Tokens muss diese Konfiguration entsprechend aktualisiert werden.
+> **Note:** Replace `YOUR_MCP_API_TOKEN` with the value of `MCP_API_TOKEN` from the server's `.env` file. Whenever the token is rotated, this configuration must be updated accordingly.
 
 ---
 
-### Option B: Verbindung über lokales Netzwerk (schneller, kein SSL)
+### Option B: Local network connection (faster, no SSL)
 
-Falls Claude Desktop im gleichen Netzwerk wie der Server (192.168.1.251) betrieben wird:
+If Claude Desktop runs on the same network as the server (192.168.1.251):
 
 ```json
 {
@@ -67,9 +67,9 @@ Falls Claude Desktop im gleichen Netzwerk wie der Server (192.168.1.251) betrieb
 
 ---
 
-### Option C: Streamable HTTP – ✅ Empfohlen für Claude Desktop for Windows
+### Option C: Streamable HTTP – ✅ Recommended for Claude Desktop
 
-Für Claude Desktop for Windows (ab Version 1.x) und andere moderne MCP-Clients. **Dies ist die einzige funktionierende Option für Claude Desktop**, da der Server nur Streamable HTTP (`/mcp/stream`) unterstützt:
+For Claude Desktop (v1.x+) and all modern MCP clients. **This is the only reliably working option for Claude Desktop**, as the server's primary transport is Streamable HTTP (`/mcp/stream`):
 
 ```json
 {
@@ -87,44 +87,45 @@ Für Claude Desktop for Windows (ab Version 1.x) und andere moderne MCP-Clients.
 
 ---
 
-## Verfügbare Tools nach der Verbindung
+## Available Tools
 
-Sobald Claude Desktop verbunden ist, stehen automatisch diese 12 Tools zur Verfügung:
+Once Claude Desktop is connected, the following 13 tools are available automatically:
 
-| Tool | Beschreibung |
+| Tool | Description |
 |---|---|
-| `list_devices` | Alle verbundenen Miele-Geräte anzeigen |
-| `get_device` | Vollständige Details eines Geräts abrufen |
-| `get_device_state` | Aktuellen Status (Temperatur, Restzeit, Programm) eines Geräts lesen |
-| `get_device_actions` | Verfügbare Aktionen für ein Gerät abfragen |
-| `get_device_programs` | Verfügbare Programme eines Geräts auflisten |
-| `get_device_ident` | Identitätsdaten (Modell, Seriennummer) eines Geräts abrufen |
-| `get_all_filling_levels` | Füllstände aller Geräte prüfen (Salz, Klarspüler, Waschmittel) |
-| `get_device_filling_levels` | Füllstände eines bestimmten Geräts prüfen |
-| `get_failure_details` | Fehlermeldungen und Störungsdetails eines Geräts abrufen |
-| `get_device_camera` | Live-Kamerabild aus dem Backofen abrufen (benötigt `mcs_thirdparty_media` Scope) |
-| `put_device_action` | Aktion an ein Gerät senden (mit Preflight-Prüfung & Dry-Run-Modus) |
-| `start_device_program` | Programm auf einem Gerät starten (mit Preflight-Prüfung & Dry-Run-Modus) |
+| `list_devices` | List all connected Miele appliances |
+| `get_device` | Retrieve full details of a device |
+| `get_device_state` | Read current status (temperature, remaining time, program) |
+| `get_device_actions` | Query available actions for a device |
+| `get_device_programs` | List available programs for a device |
+| `get_device_ident` | Retrieve identity data (model, serial number) |
+| `get_all_filling_levels` | Check filling levels of all devices (salt, rinse aid, detergent) |
+| `get_device_filling_levels` | Check filling levels of a specific device |
+| `get_failure_details` | Retrieve error messages and fault details |
+| `get_device_camera` | Live camera image from oven (requires `mcs_thirdparty_media` scope) |
+| `put_device_action` | Send an action to a device (with preflight check & dry-run mode) |
+| `start_device_program` | Start a program on a device (with preflight check & dry-run mode) |
+| `get_operation_log` | Retrieve recent write operations and their preflight results (audit log) |
 
 ---
 
-## Sicherheitshinweise
+## Security Notes
 
-- Das `MCP_API_TOKEN` sichert den Zugriff auf den MCP-Server. Gib die Config-Datei nicht weiter.
-- Der Miele OAuth-Token wird **nicht** in der URL exponiert – er läuft intern auf dem Server.
-- Schreibende Aktionen (`put_device_action`, `start_device_program`) führen immer eine Preflight-Prüfung gegen die Miele API durch, bevor sie ausgeführt werden.
-- Mit dem `dryRun: true`-Parameter kann jede Schreibaktion simuliert werden, ohne das Gerät tatsächlich zu steuern.
+- The `MCP_API_TOKEN` secures access to the MCP server. Do not share your config file.
+- The Miele OAuth token is **not** exposed in URLs – it is handled internally on the server.
+- Write operations (`put_device_action`, `start_device_program`) always perform a preflight check against the Miele API before executing.
+- The `dryRun: true` parameter can be used to simulate any write operation without actually controlling the appliance.
 
 ---
 
-## Verbindung testen
+## Testing the Connection
 
-### Health-Check (Server-Status & Token-Status):
+### Health check (server & token status):
 ```bash
 curl https://mielemcp.never2sunny.eu/health
 ```
 
-Erwartete Antwort (eingeloggt):
+Expected response (authenticated):
 ```json
 {
   "status": "ok",
@@ -133,13 +134,17 @@ Erwartete Antwort (eingeloggt):
     "authenticated": true,
     "expiresInSeconds": 3542,
     "tokenStatus": "valid"
+  },
+  "sessions": {
+    "streamable": 1,
+    "sse": 0
   }
 }
 ```
 
-### Tool-Liste per curl abrufen:
+### Retrieve tool list via curl:
 
-**Schritt 1 – Session initialisieren:**
+**Step 1 – Initialize session:**
 ```bash
 curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
   -H "Authorization: Bearer YOUR_MCP_API_TOKEN" \
@@ -147,24 +152,24 @@ curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
 ```
-*(Speichere den `mcp-session-id`-Header aus der Antwort.)*
+*(Save the `mcp-session-id` header from the response.)*
 
-**Schritt 2 – Tool-Liste abrufen:**
+**Step 2 – List tools:**
 ```bash
 curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
   -H "Authorization: Bearer YOUR_MCP_API_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
-  -H "mcp-session-id: DEINE_SESSION_ID" \
+  -H "mcp-session-id: YOUR_SESSION_ID" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
 ```
 
 ---
 
-## Netzwerk-Topologie
+## Network Topology
 
 ```
-Claude Desktop (beliebiger Rechner)
+Claude Desktop (any machine)
       |
       | HTTPS (Port 443)
       v
@@ -181,43 +186,43 @@ https://api.mcs3.miele.com/v1  ← Miele 3rd Party API
 
 ---
 
-## Fehlerbehebung
+## Troubleshooting
 
-| Fehler | Ursache | Lösung |
+| Error | Cause | Solution |
 |---|---|---|
-| `401 Unauthorized` | Token fehlt oder falsch | Token in URL prüfen: `?token=7b26765...` |
-| `auth.authenticated: false` | Kein Miele-Login | `https://mielemcp.never2sunny.eu/auth/login` aufrufen |
-| `Cannot POST /register` | Inspector im Proxy-Modus | Connection Type auf `Direct` setzen |
-| `SSE error: Failed to fetch` | CORS-Problem | Inkognito-Modus verwenden; Token in der URL nutzen (nicht als Header) |
-| `No valid token available` + endlose Reconnect-Schleife in Logs | Refresh Token abgelaufen (`invalid_grant`) **und/oder** falscher Endpunkt (`/mcp/sse`) | 1. Re-Login: `https://mielemcp.never2sunny.eu/auth/login` 2. Config auf Option C (Streamable HTTP) umstellen |
-| `Failed to refresh token` / `invalid_grant` | Miele hat den Refresh Token invalidiert (z.B. nach längerem Nichtgebrauch oder Server-Neustart) | Einmalig neu einloggen: `https://mielemcp.never2sunny.eu/auth/login` |
+| `401 Unauthorized` | Token missing or incorrect | Check token in config |
+| `auth.authenticated: false` | No Miele login | Open `https://mielemcp.never2sunny.eu/auth/login` |
+| `Cannot POST /register` | Inspector in proxy mode | Set Connection Type to `Direct` |
+| `SSE error: Failed to fetch` | CORS issue | Use incognito mode; pass token in URL (not as header) |
+| `No valid token available` + endless reconnect loop in logs | Refresh token expired (`invalid_grant`) **and/or** wrong endpoint (`/mcp/sse`) | 1. Re-login: `https://mielemcp.never2sunny.eu/auth/login` 2. Switch config to Option C (Streamable HTTP) |
+| `Failed to refresh token` / `invalid_grant` | Miele has invalidated the refresh token (e.g. after extended inactivity or a server restart) | Re-login once: `https://mielemcp.never2sunny.eu/auth/login` |
 
 ---
 
-## Bekannte Einschränkungen
+## Known Limitations
 
-- Der Server unterstützt **kein** SSE-Protokoll (`/mcp/sse`). Nur Streamable HTTP (`/mcp/stream`) funktioniert.
-- `mcp-remote` (Legacy-Wrapper) ist **nicht kompatibel** — direkt `type: http` in der `claude_desktop_config.json` verwenden.
-- Der Miele OAuth Refresh Token kann ablaufen oder invalidiert werden. Bei `invalid_grant`-Fehlern im Server-Log ist ein Re-Login über `/auth/login` erforderlich.
+- The server's production transport is Streamable HTTP (`/mcp/stream`). The SSE endpoint (`/mcp/sse`) is available but intended for development tools only.
+- `mcp-remote` (legacy wrapper) is **not compatible** — use `type: http` directly in `claude_desktop_config.json`.
+- The Miele OAuth refresh token can expire or be invalidated. On `invalid_grant` errors in the server log, re-login via `/auth/login` is required.
 
 ---
 
-## Incident-Log
+## Incident Log
 
-### 2026-06-03 – Komplettausfall nach Token-Ablauf
+### 2026-06-03 – Full outage after token expiry
 
-**Symptome:**
-- Claude meldet `No valid token available. User must authenticate first.`
-- Server-Logs zeigen endlose `GET /mcp/sse`-Reconnects
-- `Failed to refresh token | invalid_grant` im Container-Log
+**Symptoms:**
+- Claude reported `No valid token available. User must authenticate first.`
+- Server logs showed endless `GET /mcp/sse` reconnects
+- `Failed to refresh token | invalid_grant` in the container log
 
-**Ursachen (zwei unabhängige Probleme):**
-1. Miele OAuth Refresh Token abgelaufen/invalidiert
-2. `claude_desktop_config.json` verwendete noch `mcp-remote` mit `/mcp/sse` (SSE-Protokoll), das der Server nicht unterstützt
+**Root causes (two independent issues):**
+1. Miele OAuth refresh token expired / invalidated
+2. `claude_desktop_config.json` still used `mcp-remote` with `/mcp/sse` (SSE protocol), which is not suitable for production use with Claude Desktop over a reverse proxy
 
-**Lösung:**
-1. Re-Login unter `https://mielemcp.never2sunny.eu/auth/login`
-2. `claude_desktop_config.json` auf `type: http` mit `/mcp/stream` umgestellt (Option C)
-3. Claude Desktop neugestartet
+**Resolution:**
+1. Re-login at `https://mielemcp.never2sunny.eu/auth/login`
+2. `claude_desktop_config.json` switched to `type: http` with `/mcp/stream` (Option C)
+3. Claude Desktop restarted
 
-**Ergebnis:** Alle 9 Geräte wieder online, Verbindung stabil.
+**Outcome:** All 9 appliances back online, connection stable.

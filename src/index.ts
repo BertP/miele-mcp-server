@@ -8,7 +8,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { config } from './config';
 import { oauthRoutes } from './auth/oauthRoutes';
 import { TokenRepository } from './storage/tokenRepository';
-import { TokenService } from './auth/tokenService';
+import { getMieleTokenStatus } from './health/tokenStatusCache';
 import { createMcpServer } from './mcp/server';
 import { Logger } from './utils/logger';
 
@@ -31,9 +31,9 @@ interface TimestampedSSETransport {
 const streamableTransports: Record<string, TimestampedStreamTransport> = {};
 const sseTransports: Record<string, TimestampedSSETransport> = {};
 
-// E3: Purge idle sessions older than SESSION_TTL_MS (30 minutes)
+// F3: Capture interval references for graceful shutdown
 const SESSION_TTL_MS = 30 * 60 * 1000;
-setInterval(() => {
+const sessionPurgeInterval = setInterval(() => {
   const now = Date.now();
   for (const [sid, entry] of Object.entries(streamableTransports)) {
     if (now - entry.lastActivity > SESSION_TTL_MS) {
@@ -73,28 +73,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// D2: Distinguish between valid, refresh_failed, and none token states
-async function getMieleTokenStatus(): Promise<{ status: 'valid' | 'refresh_failed' | 'none'; expiresInSeconds: number }> {
-  const tokens = await TokenRepository.getTokens();
-  if (!tokens) return { status: 'none', expiresInSeconds: 0 };
-
-  const now = Math.floor(Date.now() / 1000);
-  const expiresInSeconds = Math.max(0, tokens.expires_at - now);
-
-  // Try to refresh if expired or expiring soon
-  if (expiresInSeconds < 300) {
-    const refreshed = await TokenService.refreshAccessToken(tokens.refresh_token);
-    if (!refreshed) {
-      return { status: 'refresh_failed', expiresInSeconds: 0 };
-    }
-    const newExpiry = Math.max(0, refreshed.expires_at - now);
-    return { status: 'valid', expiresInSeconds: newExpiry };
-  }
-
-  return { status: 'valid', expiresInSeconds };
-}
-
 // Health check endpoint (D2: granular token status, E2: active session counts)
+// Token status is cached for 60s – see src/health/tokenStatusCache.ts
 app.get('/health', async (req, res) => {
   try {
     const { status: tokenStatus, expiresInSeconds } = await getMieleTokenStatus();
@@ -220,14 +200,14 @@ async function notifyWebhookOnRefreshFailure(reason: string): Promise<void> {
 }
 
 // Start the server
-app.listen(config.PORT, async () => {
+const httpServer = app.listen(config.PORT, async () => {
   Logger.info(`🚀 Miele MCP Server starting in ${config.NODE_ENV} mode on port ${config.PORT}`);
   Logger.info(`🔗 Health check available at http://localhost:${config.PORT}/health`);
 
   // Cleanup expired OAuth states on startup and every 10 minutes
   const cleaned = await TokenRepository.cleanupExpiredStates();
   if (cleaned > 0) Logger.info(`🧹 Cleaned up ${cleaned} expired OAuth state(s).`);
-  setInterval(async () => {
+  const oauthCleanupInterval = setInterval(async () => {
     const n = await TokenRepository.cleanupExpiredStates();
     if (n > 0) Logger.info(`🧹 Cleaned up ${n} expired OAuth state(s).`);
   }, 10 * 60 * 1000);
@@ -248,7 +228,7 @@ app.listen(config.PORT, async () => {
   }
 
   // Periodic Miele token refresh check (every 15 minutes)
-  setInterval(async () => {
+  const tokenRefreshInterval = setInterval(async () => {
     try {
       Logger.debug('Running background Miele token refresh check...');
       const { status } = await getMieleTokenStatus();
@@ -260,4 +240,19 @@ app.listen(config.PORT, async () => {
       Logger.error('Background Miele token refresh failed', { error: err.message });
     }
   }, 15 * 60 * 1000);
+
+  // F3: Graceful shutdown – clear all intervals and close HTTP server cleanly
+  const shutdown = (signal: string) => {
+    Logger.info(`[Shutdown] Received ${signal}. Shutting down gracefully...`);
+    clearInterval(sessionPurgeInterval);
+    clearInterval(oauthCleanupInterval);
+    clearInterval(tokenRefreshInterval);
+    httpServer.close(() => {
+      Logger.info('[Shutdown] HTTP server closed. Exiting.');
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 });

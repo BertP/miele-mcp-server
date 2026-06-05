@@ -1,90 +1,84 @@
 # MCP Guide
 
-Dieses Dokument beschreibt, wie du den Miele MCP Server mit verschiedenen Clients verbinden, testen und nutzen kannst.
+This document describes how to connect, test, and use the Miele MCP Server with various clients.
 
 ---
 
-## 1. Testen mit dem MCP Inspector
+## 1. Testing with the MCP Inspector
 
-Der offizielle [MCP Inspector](https://github.com/modelcontextprotocol/inspector) ist das empfohlene Tool, um den Miele MCP Server zu testen. Er bietet eine interaktive Weboberfläche, um alle verfügbaren MCP Tools bequem aufzurufen.
+The official [MCP Inspector](https://github.com/modelcontextprotocol/inspector) is the recommended tool for testing the Miele MCP Server. It provides an interactive web UI for conveniently invoking all available MCP tools.
 
-### Option A: Verbindung mit lokalem Server (Stdio)
+### Option A: Connect to a local server (Stdio)
 
-Wenn du den Server lokal auf deinem Entwicklungsrechner ausführst:
+When running the server locally on your development machine:
 
-1. Starte den Inspector über das bereitgestellte npm-Skript:
+1. Start the Inspector via the provided npm script:
    ```bash
    npm run inspector
    ```
-2. Der Inspector startet und bindet den lokalen Server automatisch über **Stdio** an (kein API-Token erforderlich, da es eine direkte Prozesskopplung ist).
-3. Öffne die Weboberfläche des Inspectors (standardmäßig unter `http://localhost:5173`).
+2. The Inspector starts and automatically connects to the local server via **Stdio** (no API token required, as it is a direct process coupling).
+3. Open the Inspector's web UI (by default at `http://localhost:5173`).
 
-### Option B: Verbindung mit deploytem Server (SSE)
+### Option B: Connect to the deployed server (Streamable HTTP – Recommended)
 
-Wenn du den Inspector mit dem bereits deployten und abgesicherten Server (z. B. unter `https://mielemcp.never2sunny.eu`) verbinden möchtest:
+To connect the Inspector to the already-deployed and secured server (e.g. at `https://mielemcp.never2sunny.eu`):
 
-1. Starte den Inspector ohne Argumente oder nutze den gehosteten Inspector unter `https://todesktop.com/mcp/inspector` (oder lokal über `npx @modelcontextprotocol/inspector`).
-2. Wähle als **Transport Type** `SSE` aus.
-3. Gib unter **URL** die SSE-Adresse deines Servers ein. Hier musst du das API-Token übergeben. Es gibt zwei Wege, den Token als Parameter zu übergeben:
-   
-   * **Weg 1: Direkt in der URL als Query-Parameter (Empfohlen)**
-     * Trage in das URL-Feld Folgendes ein:
-       ```
-       https://mielemcp.never2sunny.eu/mcp/sse?token=DEIN_MCP_API_TOKEN
-       ```
-       *(Ersetze `DEIN_MCP_API_TOKEN` mit dem echten Wert aus deiner `.env`)*
-   
-   * **Weg 2: Über Custom Headers**
-     * Klappe die Sektion **Authentication** auf.
-     * Aktiviere (Schalter auf blau) und trage ein:
-       * **Header Name:** `Authorization`
-       * **Header Value:** `Bearer DEIN_MCP_API_TOKEN`
+1. Start the Inspector without arguments or use `npx @modelcontextprotocol/inspector`.
+2. Select **Transport Type** `HTTP` (or `Streamable HTTP`) from the dropdown.
+3. Enter the server URL: `https://mielemcp.never2sunny.eu/mcp/stream`
+4. Expand the **Headers** section and add:
+   - **Key:** `Authorization`
+   - **Value:** `Bearer YOUR_MCP_API_TOKEN`
 
-### Authentifizierung am Server (OAuth Consent)
-Bevor du Tools nutzen kannst, die eine Verbindung zur Miele API herstellen, muss der MCP Server autorisiert werden:
-1. Öffne einen **neuen Browser-Tab**.
-2. Navigiere zum Login-Endpunkt des Servers (lokal z. B. `http://localhost:8089/auth/login`, remote z. B. `https://mielemcp.never2sunny.eu/auth/login`).
-3. Logge dich mit deinen Miele-Zugangsdaten ein und wähle die Geräte aus (Consent).
-4. Nach erfolgreicher Autorisierung leitet dich die Miele API auf den Server zurück.
+> [!NOTE]
+> The SSE endpoint (`/mcp/sse`) can also be used as a fallback by selecting Transport Type `SSE` and appending `?token=YOUR_MCP_API_TOKEN` to the URL. However, Streamable HTTP is preferred.
+
+### Authenticating the server (OAuth Consent)
+Before using tools that connect to the Miele API, the MCP Server must be authorized:
+1. Open a **new browser tab**.
+2. Navigate to the server's login endpoint (locally e.g. `http://localhost:8089/auth/login`, remotely e.g. `https://mielemcp.never2sunny.eu/auth/login`).
+3. Log in with your Miele credentials and select your appliances (consent).
+4. After successful authorization, the Miele API redirects you back to the server.
 
 ---
 
-## 2. Verbindung mit Claude Desktop
+## 2. Connecting Claude Desktop
 
-Die offizielle Claude Desktop-App unterstützt Model Context Protocol (MCP) und kann mit diesem Server verbunden werden. 
+The official Claude Desktop app supports the Model Context Protocol (MCP) and can be connected to this server.
 
-Je nachdem, ob du die deployte Instanz über das Internet (per **SSE**) oder eine lokale Instanz direkt starten möchtest (per **Stdio**), konfiguriere die entsprechende Sektion in deiner Konfigurationsdatei.
-
-### Speicherort der Konfigurationsdatei
-Die Datei `claude_desktop_config.json` befindet sich an folgendem Pfad:
+### Configuration file location
+The `claude_desktop_config.json` file is located at:
 * **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 * **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 * **Linux:** `~/.config/Claude/claude_desktop_config.json`
 
-### Option A: Anbindung per SSE (Empfohlen für den deployten Server)
-Wenn der Server bereits läuft und über Nginx/HTTPS erreichbar ist (z. B. unter `https://mielemcp.never2sunny.eu`), kannst du Claude Desktop per SSE (Server-Sent Events) anbinden.
+### Option A: Streamable HTTP – ✅ Recommended for the deployed server
+When the server is already running and accessible via Nginx/HTTPS (e.g. at `https://mielemcp.never2sunny.eu`), connect Claude Desktop via Streamable HTTP:
 
-Füge unter `mcpServers` folgenden Eintrag hinzu:
+Add the following entry under `mcpServers`:
 
 ```json
 {
   "mcpServers": {
-    "miele-mcp-server": {
-      "type": "sse",
-      "url": "https://mielemcp.never2sunny.eu/mcp/sse?token=DEIN_MCP_API_TOKEN"
+    "miele-appliance-sentinel": {
+      "type": "http",
+      "url": "https://mielemcp.never2sunny.eu/mcp/stream",
+      "headers": {
+        "Authorization": "Bearer YOUR_MCP_API_TOKEN"
+      }
     }
   }
 }
 ```
 
 > [!IMPORTANT]
-> Ersetze `DEIN_MCP_API_TOKEN` mit dem echten Wert der Variable `MCP_API_TOKEN` aus deiner `.env`-Datei.
+> Replace `YOUR_MCP_API_TOKEN` with the actual value of the `MCP_API_TOKEN` variable from your `.env` file.
 
-### Option B: Anbindung per Stdio (Für lokale Entwicklung)
-Falls du den Server direkt lokal von Claude Desktop starten lassen möchtest, kannst du die Verbindung per Stdio herstellen.
+### Option B: Stdio (for local development)
+If you want Claude Desktop to launch the server directly as a local process:
 
-1. Baue das Projekt lokal (`npm run build`).
-2. Trage folgendes in die Konfigurationsdatei ein:
+1. Build the project locally (`npm run build`).
+2. Add the following to the configuration file:
 
 ```json
 {
@@ -96,10 +90,10 @@ Falls du den Server direkt lokal von Claude Desktop starten lassen möchtest, ka
       ],
       "env": {
         "PORT": "8089",
-        "MIELE_CLIENT_ID": "DEIN_MIELE_CLIENT_ID",
-        "MIELE_CLIENT_SECRET": "DEIN_MIELE_CLIENT_SECRET",
-        "SESSION_SECRET": "DEIN_SESSION_SECRET",
-        "MCP_API_TOKEN": "DEIN_MCP_API_TOKEN",
+        "MIELE_CLIENT_ID": "YOUR_MIELE_CLIENT_ID",
+        "MIELE_CLIENT_SECRET": "YOUR_MIELE_CLIENT_SECRET",
+        "SESSION_SECRET": "YOUR_SESSION_SECRET",
+        "MCP_API_TOKEN": "YOUR_MCP_API_TOKEN",
         "MIELE_SCOPES": "mcs_thirdparty_read mcs_thirdparty_media mcs_thirdparty_write"
       }
     }
@@ -108,22 +102,24 @@ Falls du den Server direkt lokal von Claude Desktop starten lassen möchtest, ka
 ```
 
 > [!NOTE]
-> * Passe die Pfade und Umgebungsvariablen an deine lokale Umgebung an.
-> * Nach jeder Änderung an der `claude_desktop_config.json` musst du Claude Desktop **vollständig neu starten** (Beenden und neu öffnen), damit die Änderungen wirksam werden.
+> * Adjust the paths and environment variables to your local setup.
+> * After every change to `claude_desktop_config.json` you must **fully restart** Claude Desktop (quit and reopen) for the changes to take effect.
 
 ---
 
-## 3. Tools interaktiv testen
+## 3. Testing tools interactively
 
-Sobald die Verbindung steht (entweder im Inspector oder in Claude Desktop), kannst du folgende Tools nutzen:
+Once the connection is established (either in the Inspector or in Claude Desktop), the following tools are available:
 
-### Lese-Tools (Read)
-* **`list_devices`**: Listet alle autorisierten Miele-Geräte auf.
-* **`get_device_state`**: Liefert den genauen Status eines bestimmten Geräts (z.B. Restlaufzeit, Temperatur).
-* **`get_device_actions`** / **`get_device_programs`**: Zeigt an, welche Programme oder Befehle das Gerät im aktuellen Zustand akzeptiert.
-* **`get_all_filling_levels`** / **`get_device_filling_levels`**: Zeigt Füllstände an (z. B. für Waschmittel, Klarspüler).
-* **`get_failure_details`**: Zeigt Fehlermeldungen des Geräts.
+### Read tools
+* **`list_devices`**: Lists all authorized Miele appliances.
+* **`get_device_state`**: Returns the precise status of a specific device (e.g. remaining time, temperature).
+* **`get_device_actions`** / **`get_device_programs`**: Shows which programs or commands the device accepts in its current state.
+* **`get_all_filling_levels`** / **`get_device_filling_levels`**: Shows filling levels (e.g. for detergent, rinse aid).
+* **`get_failure_details`**: Shows device error messages.
+* **`get_operation_log`**: Retrieves recent write operations and their preflight results (audit log).
 
-### Schreib-Tools (Write)
-* **`put_device_action`**: Sendet Befehle wie Start, Stopp oder Einstellungen an das Gerät.
-  * **Tipp für Demos:** Nutze den Parameter `dryRun: true`. Der Server führt dann die logische Validierung (Preflight-Check) aus, sendet aber keinen echten Befehl an die Miele API.
+### Write tools
+* **`put_device_action`**: Sends commands such as start, stop, or settings to the device.
+  * **Demo tip:** Use the `dryRun: true` parameter. The server then performs the logical validation (preflight check) but does not send any real command to the Miele API.
+* **`start_device_program`**: Starts a specific program on a device (also supports `dryRun: true`).

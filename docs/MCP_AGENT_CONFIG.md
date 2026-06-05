@@ -1,16 +1,16 @@
-# Kompakte MCP-Konfiguration für KI-Agenten
+# Compact MCP Configuration for AI Agents
 
-Diese Übersicht zeigt, wie der Miele MCP Server (`https://mielemcp.never2sunny.eu` / `192.168.1.251:8089`) mit den wichtigsten KI-Agenten und Clients verbunden wird.
+This guide shows how to connect the Miele MCP Server (`https://mielemcp.never2sunny.eu` / `192.168.1.251:8089`) to the most common AI agents and clients.
 
 > [!IMPORTANT]
-> **Empfohlener Verbindungstyp:** Verwende bevorzugt **Streamable HTTP** (`/mcp/stream`). Das klassische SSE-Protokoll (`/mcp/sse`) führt bei remote gehosteten Servern unter Claude Desktop zu Reconnect-Schleifen und Authentifizierungsproblemen.
+> **Recommended connection type:** Prefer **Streamable HTTP** (`/mcp/stream`). The legacy SSE protocol (`/mcp/sse`) causes reconnect loops and authentication issues with Claude Desktop when connecting to remotely hosted servers.
 
 ---
 
 ## 1. Claude (Claude Desktop & Claude Code)
 
 ### Claude Desktop
-Trage Folgendes in deine `claude_desktop_config.json` ein (Pfade: Windows `%APPDATA%\Claude\`, macOS `~/Library/Application Support/Claude/`, Linux `~/.config/Claude/`):
+Add the following to your `claude_desktop_config.json` (paths: Windows `%APPDATA%\Claude\`, macOS `~/Library/Application Support/Claude/`, Linux `~/.config/Claude/`):
 
 ```json
 {
@@ -27,7 +27,7 @@ Trage Folgendes in deine `claude_desktop_config.json` ein (Pfade: Windows `%APPD
 ```
 
 ### Claude Code (CLI)
-Füge den Server über das CLI hinzu:
+Add the server via the CLI:
 ```bash
 claude mcp add miele-appliance-sentinel https://mielemcp.never2sunny.eu/mcp/stream --auth "Bearer YOUR_MCP_API_TOKEN"
 ```
@@ -37,7 +37,7 @@ claude mcp add miele-appliance-sentinel https://mielemcp.never2sunny.eu/mcp/stre
 ## 2. Gemini (Android Studio & Gemini CLI / Project IDX)
 
 ### Android Studio (Gemini in Android Studio)
-Unter **Settings > Tools > AI > MCP Servers** aktivieren und in die `mcp.json` eintragen:
+Enable under **Settings > Tools > AI > MCP Servers** and add to `mcp.json`:
 
 ```json
 {
@@ -54,7 +54,7 @@ Unter **Settings > Tools > AI > MCP Servers** aktivieren und in die `mcp.json` e
 ```
 
 ### Gemini CLI
-Falls du das offizielle Gemini CLI nutzt, füge den Server in die globale `settings.json` unter `mcpServers` hinzu:
+If you are using the official Gemini CLI, add the server to the global `settings.json` under `mcpServers`:
 ```json
 "miele-appliance-sentinel": {
   "command": "npx",
@@ -64,44 +64,44 @@ Falls du das offizielle Gemini CLI nutzt, füge den Server in die globale `setti
 
 ---
 
-## 3. ChatGPT & IDE-Agenten (Cursor / Windsurf / Custom GPTs)
+## 3. ChatGPT & IDE Agents (Cursor / Windsurf / Custom GPTs)
 
-### Cursor & Windsurf (Empfohlen für Entwickler-Agenten)
-Für Cursor/Windsurf empfiehlt sich die Anbindung direkt über das UI:
+### Cursor & Windsurf (Recommended for developer agents)
+The easiest way is to connect directly through the UI:
 
-1. Öffne die **Settings** (Zahnrad oben rechts in Cursor).
-2. Gehe zu **Features > MCP**.
-3. Klicke auf **"+ Add New MCP Server"**.
-4. Trage folgende Werte ein:
+1. Open **Settings** (gear icon in Cursor).
+2. Go to **Features > MCP**.
+3. Click **"+ Add New MCP Server"**.
+4. Enter the following values:
    - **Name:** `miele-appliance-sentinel`
-   - **Type:** `HTTP` (falls verfügbar) oder `SSE`
-   - **URL:** 
-     - Für **HTTP**: `https://mielemcp.never2sunny.eu/mcp/stream` (mit Header `Authorization: Bearer YOUR_MCP_API_TOKEN`)
-     - Für **SSE**: `https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN` (Falls der Client keine HTTP-Header im SSE-Modus unterstützt)
+   - **Type:** `HTTP` (if available) or `SSE`
+   - **URL:**
+     - For **HTTP**: `https://mielemcp.never2sunny.eu/mcp/stream` (with header `Authorization: Bearer YOUR_MCP_API_TOKEN`)
+     - For **SSE**: `https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN` (if the client does not support HTTP headers in SSE mode)
 
 ### Custom GPTs (ChatGPT Plus)
-Für Custom GPTs in der ChatGPT-Weboberfläche wird der Server als **Action** über OpenAPI registriert. Da der MCP-Standard über HTTP-Endpunkte abgebildet wird, kannst du die Tools über die `/mcp/stream` Route mit Bearer-Token absichern. Alternativ greifen Gateways wie `mcp-gateway` die JSON-RPC-Anfragen ab.
+For Custom GPTs in the ChatGPT web interface, register the server as an **Action** via OpenAPI. Since the MCP standard is mapped over HTTP endpoints, you can secure the tools via the `/mcp/stream` route with a Bearer token. Alternatively, gateways such as `mcp-gateway` can intercept the JSON-RPC requests.
 
 ---
 
 ## 4. MCP Inspector (Debugging Tool)
 
-### Option A: Über Streamable HTTP (Empfohlen)
-Verbinde den Inspector direkt mit dem sicheren HTTP-Stream:
+### Option A: Via Streamable HTTP (Recommended)
+Connect the Inspector directly to the secure HTTP stream:
 
-1. Starte den Inspector lokal:
+1. Start the Inspector locally:
    ```bash
    npx @modelcontextprotocol/inspector
    ```
-2. Wähle im Dropdown **Transport Type**: `HTTP` oder `Stream`
-3. Trage als **URL** ein: `https://mielemcp.never2sunny.eu/mcp/stream`
-4. Klappe **Headers** auf und füge hinzu:
+2. Select **Transport Type**: `HTTP` or `Stream` from the dropdown
+3. Enter as **URL**: `https://mielemcp.never2sunny.eu/mcp/stream`
+4. Expand **Headers** and add:
    - **Key:** `Authorization`
    - **Value:** `Bearer YOUR_MCP_API_TOKEN`
 
-### Option B: Über SSE (Fallback)
-1. Wähle im Inspector **Transport Type**: `SSE`
-2. Trage als **URL** ein:
+### Option B: Via SSE (Fallback / Development only)
+1. Select **Transport Type**: `SSE` in the Inspector
+2. Enter as **URL**:
    ```
    https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN
    ```

@@ -1,89 +1,89 @@
-# Projekt-Retrospektive: Miele MCP Server – Betriebsreife & Stabilitätshärtung
+# Project Retrospective: Miele MCP Server – Production Readiness & Stability Hardening
 
 **Version:** 2.0  
-**Datum:** 2026-06-04  
-**Status:** Produktionsbereit mit offenen Optimierungspunkten  
+**Date:** 2026-06-04  
+**Status:** Production-ready with open optimization items  
 
 ---
 
-## 1. Zusammenfassung
+## 1. Summary
 
-Aufbauend auf dem abgeschlossenen MVP (Phase A: Sicherheitshärtung) wurden in dieser Iteration alle Punkte der Phasen B und C aus der RETRO_v1.md adressiert. Darüber hinaus wurden durch den produktiven Einsatz neue Erkenntnisse gewonnen – insbesondere rund um das Verbindungsprotokoll (SSE vs. Streamable HTTP), CORS-Konfiguration und die Dauerhaftigkeit der Miele-OAuth-Session.
+Building on the completed MVP (Phase A: Security Hardening), this iteration addressed all items from Phases B and C in RETRO_v1.md. In addition, new insights were gained from production use — particularly around the connection protocol (SSE vs. Streamable HTTP), CORS configuration, and the longevity of the Miele OAuth session.
 
-### Was gut gelaufen ist
+### What went well
 
-- **Phase B & C vollständig abgeschlossen:** Operation Log, Port-Alignment, Tests, Docs, Logger und Health-Check sind implementiert.
-- **Erkenntnisse aus dem Produktivbetrieb:** Der erste echte Ausfall hat die Architektur-Entscheidung für Streamable HTTP über SSE bewiesen und in der Dokumentation verankert.
-- **Schnelle Fehlerdiagnose:** Der neue strukturierte Logger und der erweiterte `/health`-Endpunkt haben die Ursachenforschung beim Incident erheblich beschleunigt.
-- **Umfassende Dokumentation für Integrationspartner:** `CLAUDE_CONFIG.md` und `MCP_AGENT_CONFIG.md` decken alle wichtigen KI-Agenten ab.
+- **Phases B & C fully completed:** Operation Log, port alignment, tests, docs, logger, and health check are all implemented.
+- **Insights from production:** The first real outage validated the architectural decision to use Streamable HTTP over SSE and anchored it in the documentation.
+- **Fast root-cause analysis:** The new structured logger and the extended `/health` endpoint significantly accelerated diagnosis during the incident.
+- **Comprehensive documentation for integration partners:** `CLAUDE_CONFIG.md` and `MCP_AGENT_CONFIG.md` cover all major AI agents.
 
-### Was verbessert werden sollte
+### What should be improved
 
-Die folgenden Punkte wurden durch den Produktivbetrieb und eine erneute Code-Review identifiziert.
-
----
-
-## 2. Stabilitätsbefunde (Priorität: HOCH)
-
-### 2.1 Miele OAuth Session bricht durch Inaktivität ab (BEKANNTES PROBLEM)
-
-**Befund:** Der Miele OAuth Refresh Token wird serverseitig invalidiert (`invalid_grant`), wenn:
-- Die Verbindung über einen längeren Zeitraum (ca. 30+ Tage) nicht genutzt wird.
-- Miele serverseitig Sicherheits-Updates durchführt oder das Passwort geändert wird.
-- Der Refresh-Zyklus durch einen Netzwerkabriss unterbrochen wird (Token-Rotation fehlgeschlagen, alte Token entwertet, neue nicht gespeichert).
-
-Der Background-Refresh-Interval (alle 15 Minuten) verhindert das Ablaufen des **Access Tokens** (1h TTL), kann aber einen durch Miele serverseitig invalidierten **Refresh Token** nicht reparieren.
-
-**Aktuelles Verhalten:** Bei einem ungültigen Refresh Token gibt `/health` weiterhin `"tokenStatus": "expired"` zurück, obwohl der Hintergrund-Refresh aktiv versucht (und scheitert), ihn zu erneuern.
-
-**Empfehlung:**
-- `/health` soll explizit unterscheiden zwischen:
-  - `"tokenStatus": "valid"` – Token aktiv und frisch
-  - `"tokenStatus": "refresh_failed"` – Refresh Token ungültig, manueller Re-Login nötig
-  - `"tokenStatus": "none"` – Keine Session vorhanden
-- Eine optionale E-Mail- oder Webhook-Benachrichtigung einbauen, wenn der Refresh fehlschlägt, damit der Administrator ohne Log-Beobachtung informiert wird.
-
-### 2.2 Keine Retry-Logik beim Token-Refresh
-
-**Befund:** `TokenService.refreshAccessToken()` gibt bei einem Fehler (z.B. Netzwerkfehler) sofort `null` zurück. Bei einem kurzen Netzwerkausfall zwischen Server und Miele API wird der Refresh nicht wiederholt.
-
-**Risiko:** Ein kurzer Netzwerkausfall (1-2 Sekunden) kann dazu führen, dass der Server für bis zu 15 Minuten (bis zum nächsten Interval-Tick) keine gültigen Tokens abrufen kann.
-
-**Empfehlung:** Exponentielles Backoff mit 2-3 Versuchen im `refreshAccessToken()` implementieren.
+The following items were identified through production experience and a fresh code review.
 
 ---
 
-## 3. Architektur-Befunde (Priorität: MITTEL)
+## 2. Stability Findings (Priority: HIGH)
 
-### 3.1 Imports nach Applikationsstart in `index.ts`
+### 2.1 Miele OAuth session breaks due to inactivity (KNOWN ISSUE)
 
-**Befund:** In `index.ts` werden mehrere `import`-Statements *nach* dem `const app = express()` und nach dem ersten `app.use(...)` platziert (Zeilen 13–20). Das ist in modernem JavaScript/TypeScript syntaktisch zwar erlaubt (alle Imports werden gehoisted), gilt aber als schlechter Stil und kann bei zukünftigen Refactorings zu Verwirrung führen.
+**Finding:** The Miele OAuth refresh token is invalidated server-side (`invalid_grant`) when:
+- The connection is not used for an extended period (approx. 30+ days).
+- Miele performs server-side security updates or the password is changed.
+- The refresh cycle is interrupted by a network outage (token rotation failed: old token revoked, new token not saved).
 
-**Empfehlung:** Alle Imports an den Anfang der Datei verschieben.
+The background refresh interval (every 15 minutes) prevents the **access token** (1h TTL) from expiring, but cannot repair a **refresh token** that has been invalidated server-side by Miele.
 
-### 3.2 Unused Import `isInitializeRequest`
+**Current behavior:** When the refresh token is invalid, `/health` continues to return `"tokenStatus": "expired"` even though the background refresh is actively trying (and failing) to renew it.
 
-**Befund:** `isInitializeRequest` wird in `index.ts` (Zeile 17) aus dem MCP SDK importiert, aber nie verwendet.
+**Recommendation:**
+- `/health` should explicitly distinguish between:
+  - `"tokenStatus": "valid"` – token active and fresh
+  - `"tokenStatus": "refresh_failed"` – refresh token invalid, manual re-login required
+  - `"tokenStatus": "none"` – no session present
+- Optionally add an email or webhook notification when the refresh fails, so the administrator is informed without having to monitor logs.
 
-**Empfehlung:** Ungenutzten Import entfernen.
+### 2.2 No retry logic for token refresh
 
-### 3.3 MCP-Session-Verwaltung ohne Memory-Limit
+**Finding:** `TokenService.refreshAccessToken()` immediately returns `null` on any error (e.g. network error). During a brief network outage between the server and the Miele API, the refresh is not retried.
 
-**Befund:** Die Maps `streamableTransports` und `sseTransports` in `index.ts` wachsen mit jeder neuen Client-Verbindung. Sessions werden zwar beim Close-Event entfernt, aber es gibt keinen Mechanismus, um verwaiste Sessions (z. B. bei abrupt abgebrochenen Verbindungen ohne Close-Event) zu bereinigen.
+**Risk:** A short network outage (1–2 seconds) can cause the server to be unable to obtain valid tokens for up to 15 minutes (until the next interval tick).
 
-**Risiko:** Bei vielen kurzlebigen Verbindungen (z.B. mehrere KI-Agenten hintereinander) wächst der Speicherbedarf unbegrenzt.
+**Recommendation:** Implement exponential backoff with 2–3 retries in `refreshAccessToken()`.
 
-**Empfehlung:** Einen TTL-basierten Purge-Mechanismus für Sessions einbauen (z.B. Sessions, die seit >30 Minuten keine Aktivität hatten, aus der Map entfernen).
+---
 
-### 3.4 CORS-Middleware gibt Wildcard-Origin zurück bei fehlendem Origin-Header
+## 3. Architecture Findings (Priority: MEDIUM)
 
-**Befund:** Die CORS-Middleware in `index.ts` (Zeile 23) setzt bei fehlendem `Origin`-Header `'*'` als Access-Control-Allow-Origin:
+### 3.1 Imports after application start in `index.ts`
+
+**Finding:** In `index.ts`, several `import` statements are placed *after* `const app = express()` and after the first `app.use(...)` call (lines 13–20). While syntactically valid in modern JavaScript/TypeScript (all imports are hoisted), this is considered poor style and can cause confusion during future refactoring.
+
+**Recommendation:** Move all imports to the top of the file.
+
+### 3.2 Unused import `isInitializeRequest`
+
+**Finding:** `isInitializeRequest` is imported in `index.ts` (line 17) from the MCP SDK but never used.
+
+**Recommendation:** Remove the unused import.
+
+### 3.3 MCP session management without memory limit
+
+**Finding:** The maps `streamableTransports` and `sseTransports` in `index.ts` grow with each new client connection. Sessions are removed on the close event, but there is no mechanism to clean up orphaned sessions (e.g. from abruptly terminated connections without a close event).
+
+**Risk:** With many short-lived connections (e.g. multiple AI agents in succession), memory usage grows unboundedly.
+
+**Recommendation:** Implement a TTL-based purge mechanism for sessions (e.g. remove sessions from the map that have had no activity for >30 minutes).
+
+### 3.4 CORS middleware returns wildcard origin when Origin header is missing
+
+**Finding:** The CORS middleware in `index.ts` (line 23) sets `'*'` as `Access-Control-Allow-Origin` when the `Origin` header is absent:
 ```typescript
 const origin = req.headers.origin || '*';
 ```
-Damit wird `Access-Control-Allow-Credentials: true` mit `Access-Control-Allow-Origin: *` kombiniert, was von Browsern abgelehnt wird (Sicherheitsspezifikation).
+This combines `Access-Control-Allow-Credentials: true` with `Access-Control-Allow-Origin: *`, which browsers reject (security specification).
 
-**Empfehlung:** Nur einen echo-Origin zurückgeben wenn ein Origin-Header vorhanden ist. Ohne Origin-Header keinen CORS-Header setzen:
+**Recommendation:** Only echo the origin back when an `Origin` header is present. Without an `Origin` header, set no CORS header:
 ```typescript
 const origin = req.headers.origin;
 if (origin) {
@@ -92,11 +92,11 @@ if (origin) {
 }
 ```
 
-### 3.5 Kein Health-Check für SSE-Endpunkt
+### 3.5 No health check for SSE endpoint
 
-**Befund:** Der `/health`-Endpunkt prüft DB-Konnektivität und Miele-Token-Status, aber gibt keinen Hinweis über den Zustand aktiver Verbindungen (wie viele Sessions aktiv sind, ob SSE- oder Streamable-HTTP-Transports geöffnet sind).
+**Finding:** The `/health` endpoint checks DB connectivity and Miele token status but gives no indication of the state of active connections (how many sessions are active, whether SSE or Streamable HTTP transports are open).
 
-**Empfehlung:** Aktive Session-Anzahl in `/health` aufnehmen:
+**Recommendation:** Include active session count in `/health`:
 ```json
 "sessions": {
   "streamable": 2,
@@ -106,95 +106,95 @@ if (origin) {
 
 ---
 
-## 4. Token-Management-Befunde (Priorität: MITTEL)
+## 4. Token Management Findings (Priority: MEDIUM)
 
-### 4.1 `getValidToken()` wird bei jedem `/health`-Aufruf ausgeführt
+### 4.1 `getValidToken()` is executed on every `/health` call
 
-**Befund:** Seit dem letzten Update ruft der `/health`-Endpoint `TokenService.getValidToken()` auf. Bei schnell aufeinanderfolgenden Anfragen (z. B. Monitoring-Systeme, die alle 10 Sekunden prüfen) kann dies zu unnötiger Last auf dem Miele OAuth-Endpunkt führen, falls der Token knapp vor dem Ablauf steht.
+**Finding:** Since the last update, the `/health` endpoint calls `TokenService.getValidToken()`. With rapid successive requests (e.g. monitoring systems checking every 10 seconds), this can cause unnecessary load on the Miele OAuth endpoint if the token is close to expiry.
 
-**Empfehlung:** Im `getValidToken()` oder im `/health`-Handler ein kurzes Debouncing einbauen: Refresh nicht häufiger als einmal pro Minute wirklich durchführen.
+**Recommendation:** Add short debouncing in `getValidToken()` or the `/health` handler: do not actually perform a refresh more than once per minute.
 
-### 4.2 Kein Logging des Refresh-Token-Ablaufdatums
+### 4.2 No logging of refresh token expiry time
 
-**Befund:** Beim erfolgreichen Token-Refresh wird lediglich `✅ Access token refreshed successfully.` geloggt, aber nicht, wann der neue Token abläuft. Bei der Fehlersuche ist es hilfreich zu wissen, wie lange der frische Token noch gültig ist.
+**Finding:** On a successful token refresh, only `✅ Access token refreshed successfully.` is logged, without indicating when the new token expires. During debugging, it is helpful to know how long the fresh token remains valid.
 
-**Empfehlung:** Nach erfolgreichem Refresh den neuen `expires_at`-Zeitstempel im Log ausgeben.
-
----
-
-## 5. Code-Qualität (Priorität: NIEDRIG)
-
-### 5.1 Logger gibt `config` als Wildcard ohne Nullprüfung weiter
-
-**Befund:** In `logger.ts` wird `config?.LOG_LEVEL` und `config?.NODE_ENV` mit optionalem Chaining verwendet, was impliziert, dass `config` zur Laufzeit `undefined` sein könnte. Da `config` aus Zod-validiertem Import kommt und immer vorhanden ist, ist das optionale Chaining redundant und kann die statische Analyse täuschen.
-
-**Empfehlung:** Optionales Chaining in `logger.ts` entfernen, da `config` garantiert vorhanden ist.
-
-### 5.2 `OperationLogRepository` hat keine Abfrage-Methode
-
-**Befund:** Das `OperationLogRepository` kann nur schreiben (`log()`), aber nicht lesen. Es gibt kein Tool und keinen Endpunkt, über den die KI oder der Administrator die protokollierten Operationen abrufen kann.
-
-**Empfehlung:** Eine `getRecentLogs(limit: number)`-Methode implementieren und optional ein MCP-Tool `get_operation_log` hinzufügen, über das die KI die letzten Schreiboperationen abrufen kann (nützlich für Audits: „Was hat die KI zuletzt mit meinen Geräten gemacht?").
-
-### 5.3 `docker-compose.yml` enthält veraltetes `version`-Attribut
-
-**Befund:** Die `docker-compose.yml` enthält `version: '3.8'`, was seit Docker Compose v2 als obsolet gilt und beim Starten eine Warnung erzeugt.
-
-**Empfehlung:** `version: '3.8'`-Zeile entfernen.
-
-### 5.4 `CLAUDE_CONFIG.md` und `MCP_AGENT_CONFIG.md` enthalten sicherheitskritische Tokens
-
-**Befund:** Beide Dokumentationsdateien enthalten den echten `MCP_API_TOKEN` (`YOUR_MCP_API_TOKEN`) im Klartext. Diese Dateien sind im Git-Repository committed und damit potenziell öffentlich sichtbar (je nach Repository-Sichtbarkeit).
-
-**Risiko:** Falls das Repository öffentlich ist oder wird, ist der Token sofort kompromittiert.
-
-**Empfehlung:** Token in Dokumenten durch einen Platzhalter ersetzen (`YOUR_MCP_API_TOKEN`) und eine `.gitignore`-Regel oder einen Repository-Scan (z.B. `gitleaks`) einrichten.
+**Recommendation:** Log the new `expires_at` timestamp after a successful refresh.
 
 ---
 
-## 6. Betriebserkenntnisse aus dem Incident 2026-06-03
+## 5. Code Quality (Priority: LOW)
 
-### 6.1 Incident: Komplettausfall durch Token-Ablauf + Falsches Protokoll
+### 5.1 Logger uses optional chaining without null check
 
-**Symptome:** Endlose Reconnect-Schleife in den Logs, Claude Desktop zeigt „No valid token available".
+**Finding:** In `logger.ts`, `config?.LOG_LEVEL` and `config?.NODE_ENV` use optional chaining, implying that `config` could be `undefined` at runtime. Since `config` comes from a Zod-validated import and is always present, the optional chaining is redundant and can mislead static analysis.
+
+**Recommendation:** Remove optional chaining in `logger.ts` since `config` is guaranteed to be present.
+
+### 5.2 `OperationLogRepository` has no query method
+
+**Finding:** `OperationLogRepository` can only write (`log()`), not read. There is no tool or endpoint through which the AI or the administrator can retrieve the logged operations.
+
+**Recommendation:** Implement a `getRecentLogs(limit: number)` method and optionally add an MCP tool `get_operation_log` through which the AI can retrieve recent write operations (useful for audits: "What has the AI done with my appliances recently?").
+
+### 5.3 `docker-compose.yml` contains deprecated `version` attribute
+
+**Finding:** `docker-compose.yml` contains `version: '3.8'`, which has been considered obsolete since Docker Compose v2 and generates a warning on startup.
+
+**Recommendation:** Remove the `version: '3.8'` line.
+
+### 5.4 `CLAUDE_CONFIG.md` and `MCP_AGENT_CONFIG.md` contain security-critical tokens
+
+**Finding:** Both documentation files contained the real `MCP_API_TOKEN` in plain text. These files are committed to the Git repository and potentially publicly visible (depending on repository visibility).
+
+**Risk:** If the repository is or becomes public, the token is immediately compromised.
+
+**Recommendation:** Replace tokens in documents with a placeholder (`YOUR_MCP_API_TOKEN`) and set up a `.gitignore` rule or a repository scan (e.g. `gitleaks`).
+
+---
+
+## 6. Production Insights from the 2026-06-03 Incident
+
+### 6.1 Incident: Complete outage due to token expiry + wrong protocol
+
+**Symptoms:** Endless reconnect loop in logs, Claude Desktop showing "No valid token available".
 
 **Root Causes:**
-1. Miele Refresh Token war serverseitig invalidiert (`invalid_grant`).
-2. Claude Desktop Config verwendete noch `mcp-remote` mit dem SSE-Endpunkt `/mcp/sse`, welcher bei dieser Server-Implementierung nicht stabil genug für Remote-Verbindungen über einen Nginx-Proxy ist.
+1. Miele refresh token was invalidated server-side (`invalid_grant`).
+2. Claude Desktop config still used `mcp-remote` with the SSE endpoint `/mcp/sse`, which is not stable enough for remote connections via an Nginx proxy with this server implementation.
 
-**Lektionen:**
-- **SSE ist für den Produktivbetrieb mit Reverse Proxies ungeeignet.** Der SSE-Endpunkt `/mcp/sse` bleibt im Code für Entwickler-Tools (MCP Inspector) erhalten, sollte aber in der Dokumentation noch klarer als „nicht für Produktion" markiert werden.
-- **Streamable HTTP (`/mcp/stream`) ist der einzige offiziell supportete Verbindungsweg.**
-- **Ein abgelaufener Refresh Token erfordert manuelles Eingreifen**, was besser kommuniziert werden muss (siehe Punkt 2.1).
-
----
-
-## 7. Empfohlene Roadmap
-
-### Phase D: Stabilität & Betrieb
-
-| # | Aufgabe | Aufwand | Priorität |
-|---|---------|---------|-----------|
-| D1 | Retry-Logik (exponentielles Backoff) in `TokenService.refreshAccessToken()` | Klein | Hoch |
-| D2 | Differenzierter `tokenStatus` in `/health` (`valid` / `refresh_failed` / `none`) | Klein | Hoch |
-| D3 | CORS-Wildcard-Bug bei fehlendem Origin-Header beheben | Klein | Mittel |
-| D4 | Ungenutzten Import `isInitializeRequest` und Import-Reihenfolge in `index.ts` bereinigen | Sehr Klein | Niedrig |
-| D5 | `version`-Attribut aus `docker-compose.yml` entfernen | Sehr Klein | Niedrig |
-
-### Phase E: Erweiterung & Observability
-
-| # | Aufgabe | Aufwand | Priorität |
-|---|---------|---------|-----------|
-| E1 | `get_operation_log` MCP-Tool implementieren (Audit-Log per KI abrufbar) | Mittel | Mittel |
-| E2 | Aktive Session-Zahl in `/health` aufnehmen | Klein | Niedrig |
-| E3 | TTL-basierter Purge verwaister Transport-Sessions | Mittel | Mittel |
-| E4 | Webhook/E-Mail-Benachrichtigung bei Token-Refresh-Fehlschlag | Mittel | Mittel |
-| E5 | Tokens in Markdown-Dokumentation durch Platzhalter ersetzen | Klein | Hoch |
+**Lessons:**
+- **SSE is unsuitable for production use with reverse proxies.** The SSE endpoint `/mcp/sse` remains in the code for developer tools (MCP Inspector) but should be more clearly marked as "not for production" in the documentation.
+- **Streamable HTTP (`/mcp/stream`) is the only officially supported connection method.**
+- **An expired refresh token requires manual intervention**, which must be communicated more clearly (see point 2.1).
 
 ---
 
-## 8. Fazit
+## 7. Recommended Roadmap
 
-Der Miele MCP Server hat seinen ersten Produktivbetrieb erfolgreich bestanden. Die Architektur ist solide; die identifizierten Schwachstellen liegen hauptsächlich im Bereich **Betriebsstabilität bei langen Laufzeiten** (Token-Refresh-Robustheit, Session-Management) und **Observability** (klarere Health-Meldungen, Audit-Log-Abfrage).
+### Phase D: Stability & Operations
 
-Die **dringendste offene Schwachstelle** ist die fehlende Unterscheidung zwischen einem durch Inaktivität abgelaufenem Access Token (selbst heilend) und einem durch Miele serverseitig invalidierten Refresh Token (erfordert manuellen Re-Login). Diese zwei Zustände müssen in `/health` sauber getrennt kommuniziert werden, damit KI-Agenten und Administratoren ohne Log-Analyse reagieren können.
+| # | Task | Effort | Priority |
+|---|------|--------|----------|
+| D1 | Retry logic (exponential backoff) in `TokenService.refreshAccessToken()` | Small | High |
+| D2 | Differentiated `tokenStatus` in `/health` (`valid` / `refresh_failed` / `none`) | Small | High |
+| D3 | Fix CORS wildcard bug with missing Origin header | Small | Medium |
+| D4 | Remove unused import `isInitializeRequest` and clean up import order in `index.ts` | Very Small | Low |
+| D5 | Remove `version` attribute from `docker-compose.yml` | Very Small | Low |
+
+### Phase E: Extensions & Observability
+
+| # | Task | Effort | Priority |
+|---|------|--------|----------|
+| E1 | Implement `get_operation_log` MCP tool (audit log queryable by AI) | Medium | Medium |
+| E2 | Include active session count in `/health` | Small | Low |
+| E3 | TTL-based purge of orphaned transport sessions | Medium | Medium |
+| E4 | Webhook/email notification on token refresh failure | Medium | Medium |
+| E5 | Replace real tokens in Markdown documentation with placeholders | Small | High |
+
+---
+
+## 8. Conclusion
+
+The Miele MCP Server has successfully survived its first production use. The architecture is solid; the identified weaknesses lie primarily in the areas of **operational stability over long runtimes** (token refresh robustness, session management) and **observability** (clearer health messages, audit log queries).
+
+The **most urgent open weakness** was the missing distinction between an access token that expired due to inactivity (self-healing) and a refresh token invalidated server-side by Miele (requires manual re-login). These two states must be clearly communicated separately in `/health` so that AI agents and administrators can respond without log analysis.
