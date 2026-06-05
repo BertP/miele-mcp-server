@@ -48,4 +48,4 @@ We recommend using the official MCP Inspector to test and demonstrate the server
 3. In a separate tab, hit the login endpoint (`http://localhost:3000/auth/login`) to log in using your Miele credentials and consent to specific appliances.
 4. Go back to the MCP Inspector. You can now safely interact with the server using tools like `list_devices`, `get_device_state`, and `put_device_action`.
 
-For a detailed step-by-step tutorial, please see the [MCP Guide](MCP_GUIDE.md).
+For a detailed step-by-step tutorial, please see the [MCP Guide](docs/MCP_GUIDE.md).
