@@ -19,7 +19,7 @@ Trage Folgendes in deine `claude_desktop_config.json` ein (Pfade: Windows `%APPD
       "type": "http",
       "url": "https://mielemcp.never2sunny.eu/mcp/stream",
       "headers": {
-        "Authorization": "Bearer 7b26765fc6b1819fb90545bf17c54558"
+        "Authorization": "Bearer YOUR_MCP_API_TOKEN"
       }
     }
   }
@@ -29,7 +29,7 @@ Trage Folgendes in deine `claude_desktop_config.json` ein (Pfade: Windows `%APPD
 ### Claude Code (CLI)
 Füge den Server über das CLI hinzu:
 ```bash
-claude mcp add miele-appliance-sentinel https://mielemcp.never2sunny.eu/mcp/stream --auth "Bearer 7b26765fc6b1819fb90545bf17c54558"
+claude mcp add miele-appliance-sentinel https://mielemcp.never2sunny.eu/mcp/stream --auth "Bearer YOUR_MCP_API_TOKEN"
 ```
 
 ---
@@ -46,7 +46,7 @@ Unter **Settings > Tools > AI > MCP Servers** aktivieren und in die `mcp.json` e
       "type": "http",
       "url": "https://mielemcp.never2sunny.eu/mcp/stream",
       "headers": {
-        "Authorization": "Bearer 7b26765fc6b1819fb90545bf17c54558"
+        "Authorization": "Bearer YOUR_MCP_API_TOKEN"
       }
     }
   }
@@ -58,7 +58,7 @@ Falls du das offizielle Gemini CLI nutzt, füge den Server in die globale `setti
 ```json
 "miele-appliance-sentinel": {
   "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/client-http", "https://mielemcp.never2sunny.eu/mcp/stream", "--auth", "Bearer 7b26765fc6b1819fb90545bf17c54558"]
+  "args": ["-y", "@modelcontextprotocol/client-http", "https://mielemcp.never2sunny.eu/mcp/stream", "--auth", "Bearer YOUR_MCP_API_TOKEN"]
 }
 ```
 
@@ -76,8 +76,8 @@ Für Cursor/Windsurf empfiehlt sich die Anbindung direkt über das UI:
    - **Name:** `miele-appliance-sentinel`
    - **Type:** `HTTP` (falls verfügbar) oder `SSE`
    - **URL:** 
-     - Für **HTTP**: `https://mielemcp.never2sunny.eu/mcp/stream` (mit Header `Authorization: Bearer 7b26765fc6b1819fb90545bf17c54558`)
-     - Für **SSE**: `https://mielemcp.never2sunny.eu/mcp/sse?token=7b26765fc6b1819fb90545bf17c54558` (Falls der Client keine HTTP-Header im SSE-Modus unterstützt)
+     - Für **HTTP**: `https://mielemcp.never2sunny.eu/mcp/stream` (mit Header `Authorization: Bearer YOUR_MCP_API_TOKEN`)
+     - Für **SSE**: `https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN` (Falls der Client keine HTTP-Header im SSE-Modus unterstützt)
 
 ### Custom GPTs (ChatGPT Plus)
 Für Custom GPTs in der ChatGPT-Weboberfläche wird der Server als **Action** über OpenAPI registriert. Da der MCP-Standard über HTTP-Endpunkte abgebildet wird, kannst du die Tools über die `/mcp/stream` Route mit Bearer-Token absichern. Alternativ greifen Gateways wie `mcp-gateway` die JSON-RPC-Anfragen ab.
@@ -97,11 +97,11 @@ Verbinde den Inspector direkt mit dem sicheren HTTP-Stream:
 3. Trage als **URL** ein: `https://mielemcp.never2sunny.eu/mcp/stream`
 4. Klappe **Headers** auf und füge hinzu:
    - **Key:** `Authorization`
-   - **Value:** `Bearer 7b26765fc6b1819fb90545bf17c54558`
+   - **Value:** `Bearer YOUR_MCP_API_TOKEN`
 
 ### Option B: Über SSE (Fallback)
 1. Wähle im Inspector **Transport Type**: `SSE`
 2. Trage als **URL** ein:
    ```
-   https://mielemcp.never2sunny.eu/mcp/sse?token=7b26765fc6b1819fb90545bf17c54558
+   https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN
    ```

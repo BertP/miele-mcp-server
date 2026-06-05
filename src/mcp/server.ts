@@ -9,6 +9,7 @@ import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool, getAllFilling
 import { getDeviceCameraTool } from './tools/getDeviceCamera';
 import { putDeviceActionTool } from './tools/putDeviceAction';
 import { startDeviceProgramTool } from './tools/startDeviceProgram';
+import { getOperationLogTool } from './tools/getOperationLog';
 
 export function createMcpServer(): Server {
   const server = new Server(
@@ -36,6 +37,7 @@ export function createMcpServer(): Server {
     getDeviceCameraTool,
     putDeviceActionTool,
     startDeviceProgramTool,
+    getOperationLogTool,
   ];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {

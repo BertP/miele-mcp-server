@@ -2,8 +2,15 @@ import { config } from '../config';
 import { TokenRepository, TokenRecord } from '../storage/tokenRepository';
 import { Logger } from '../utils/logger';
 
+const MAX_REFRESH_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 1000;
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export class TokenService {
-  static async refreshAccessToken(refreshToken: string): Promise<TokenRecord | null> {
+  static async refreshAccessToken(refreshToken: string, attempt = 1): Promise<TokenRecord | null> {
     try {
       const response = await fetch(config.MIELE_TOKEN_URL, {
         method: 'POST',
@@ -21,6 +28,21 @@ export class TokenService {
       if (!response.ok) {
         const errorText = await response.text();
         Logger.error('Failed to refresh token', { status: response.status, errorText });
+
+        // For 4xx errors (e.g. invalid_grant), retrying won't help – fail immediately
+        if (response.status >= 400 && response.status < 500) {
+          return null;
+        }
+
+        // For 5xx / network-level errors, retry with exponential backoff
+        if (attempt < MAX_REFRESH_RETRIES) {
+          const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          Logger.warn(`Token refresh attempt ${attempt} failed. Retrying in ${delay}ms...`);
+          await sleep(delay);
+          return TokenService.refreshAccessToken(refreshToken, attempt + 1);
+        }
+
+        Logger.error(`Token refresh failed after ${MAX_REFRESH_RETRIES} attempts.`);
         return null;
       }
 
@@ -33,10 +55,20 @@ export class TokenService {
 
       await TokenRepository.saveTokens(data.access_token, data.refresh_token, data.expires_in);
       
-      Logger.info('✅ Access token refreshed successfully.');
-      return await TokenRepository.getTokens();
+      const saved = await TokenRepository.getTokens();
+      const expiresAt = saved ? new Date(saved.expires_at * 1000).toISOString() : 'unknown';
+      Logger.info(`✅ Access token refreshed successfully. Expires at: ${expiresAt}`);
+      return saved;
     } catch (error: any) {
-      Logger.error('Error during token refresh', { error: error.message });
+      // Network-level error – retry with backoff
+      Logger.error('Error during token refresh', { error: error.message, attempt });
+      if (attempt < MAX_REFRESH_RETRIES) {
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        Logger.warn(`Token refresh attempt ${attempt} failed (network). Retrying in ${delay}ms...`);
+        await sleep(delay);
+        return TokenService.refreshAccessToken(refreshToken, attempt + 1);
+      }
+      Logger.error(`Token refresh failed after ${MAX_REFRESH_RETRIES} attempts (network errors).`);
       return null;
     }
   }

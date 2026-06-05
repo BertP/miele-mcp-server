@@ -40,13 +40,13 @@ Status jederzeit prüfbar unter: `https://mielemcp.never2sunny.eu/health`
   "mcpServers": {
     "miele-appliance-sentinel": {
       "type": "sse",
-      "url": "https://mielemcp.never2sunny.eu/mcp/sse?token=7b26765fc6b1819fb90545bf17c54558"
+      "url": "https://mielemcp.never2sunny.eu/mcp/sse?token=YOUR_MCP_API_TOKEN"
     }
   }
 }
 ```
 
-> **Hinweis:** Der Token `7b26765fc6b1819fb90545bf17c54558` entspricht dem `MCP_API_TOKEN` in der `.env`-Datei auf dem Server. Bei Rotation des Tokens muss diese Konfiguration entsprechend aktualisiert werden.
+> **Hinweis:** Der Token `YOUR_MCP_API_TOKEN` entspricht dem `MCP_API_TOKEN` in der `.env`-Datei auf dem Server. Bei Rotation des Tokens muss diese Konfiguration entsprechend aktualisiert werden.
 
 ---
 
@@ -59,7 +59,7 @@ Falls Claude Desktop im gleichen Netzwerk wie der Server (192.168.1.251) betrieb
   "mcpServers": {
     "miele-appliance-sentinel": {
       "type": "sse",
-      "url": "http://192.168.1.251:8089/mcp/sse?token=7b26765fc6b1819fb90545bf17c54558"
+      "url": "http://192.168.1.251:8089/mcp/sse?token=YOUR_MCP_API_TOKEN"
     }
   }
 }
@@ -78,7 +78,7 @@ Für Claude Desktop for Windows (ab Version 1.x) und andere moderne MCP-Clients.
       "type": "http",
       "url": "https://mielemcp.never2sunny.eu/mcp/stream",
       "headers": {
-        "Authorization": "Bearer 7b26765fc6b1819fb90545bf17c54558"
+        "Authorization": "Bearer YOUR_MCP_API_TOKEN"
       }
     }
   }
@@ -142,7 +142,7 @@ Erwartete Antwort (eingeloggt):
 **Schritt 1 – Session initialisieren:**
 ```bash
 curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
-  -H "Authorization: Bearer 7b26765fc6b1819fb90545bf17c54558" \
+  -H "Authorization: Bearer YOUR_MCP_API_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
@@ -152,7 +152,7 @@ curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
 **Schritt 2 – Tool-Liste abrufen:**
 ```bash
 curl -X POST https://mielemcp.never2sunny.eu/mcp/stream \
-  -H "Authorization: Bearer 7b26765fc6b1819fb90545bf17c54558" \
+  -H "Authorization: Bearer YOUR_MCP_API_TOKEN" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: DEINE_SESSION_ID" \
   -H "Content-Type: application/json" \

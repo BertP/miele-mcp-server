@@ -144,7 +144,7 @@ if (origin) {
 
 ### 5.4 `CLAUDE_CONFIG.md` und `MCP_AGENT_CONFIG.md` enthalten sicherheitskritische Tokens
 
-**Befund:** Beide Dokumentationsdateien enthalten den echten `MCP_API_TOKEN` (`7b26765fc6b1819fb90545bf17c54558`) im Klartext. Diese Dateien sind im Git-Repository committed und damit potenziell öffentlich sichtbar (je nach Repository-Sichtbarkeit).
+**Befund:** Beide Dokumentationsdateien enthalten den echten `MCP_API_TOKEN` (`YOUR_MCP_API_TOKEN`) im Klartext. Diese Dateien sind im Git-Repository committed und damit potenziell öffentlich sichtbar (je nach Repository-Sichtbarkeit).
 
 **Risiko:** Falls das Repository öffentlich ist oder wird, ist der Token sofort kompromittiert.
 

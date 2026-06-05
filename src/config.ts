@@ -17,6 +17,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(8, "SESSION_SECRET must be at least 8 characters long"),
   MCP_API_TOKEN: z.string().min(8).describe('Secure API token required for connecting MCP clients via SSE'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  WEBHOOK_URL: z.string().url().optional().describe('Optional webhook URL to notify on critical events (e.g. token refresh failure)'),
 });
 
 export type Config = z.infer<typeof envSchema>;
