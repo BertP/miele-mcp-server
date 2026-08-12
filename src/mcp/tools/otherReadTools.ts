@@ -112,3 +112,22 @@ export const getFailureDetailsTool = {
     }
   }
 };
+
+export const getDeviceLastUsedProgramsTool = {
+  name: 'get_device_last_used_programs',
+  description: 'Return last used programs for a device.',
+  inputSchema: {
+    type: 'object',
+    properties: { deviceId: { type: 'string' } },
+    required: ['deviceId'],
+    additionalProperties: false,
+  },
+  async handler(args: { deviceId: string }) {
+    try {
+      const data = await MieleClient.get(`/devices/${args.deviceId}/lastUsedPrograms`);
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+    } catch (error: any) {
+      return { isError: true, content: [{ type: 'text', text: `Failed to get last used programs: ${error.message}` }] };
+    }
+  }
+};

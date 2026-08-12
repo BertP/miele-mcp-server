@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Miele MCP Server runs on **`192.168.1.251:8089`** and is publicly accessible at **`https://mielemcp.never2sunny.eu`**. It exposes 13 MCP tools that allow Claude to interact with Miele home appliances.
+The Miele MCP Server runs on **`192.168.1.251:8089`** and is publicly accessible at **`https://mielemcp.never2sunny.eu`**. It exposes 14 MCP tools that allow Claude to interact with Miele home appliances.
 
 ---
 
@@ -89,7 +89,7 @@ For Claude Desktop (v1.x+) and all modern MCP clients. **This is the only reliab
 
 ## Available Tools
 
-Once Claude Desktop is connected, the following 13 tools are available automatically:
+Once Claude Desktop is connected, the following 14 tools are available automatically:
 
 | Tool | Description |
 |---|---|
@@ -102,6 +102,7 @@ Once Claude Desktop is connected, the following 13 tools are available automatic
 | `get_all_filling_levels` | Check filling levels of all devices (salt, rinse aid, detergent) |
 | `get_device_filling_levels` | Check filling levels of a specific device |
 | `get_failure_details` | Retrieve error messages and fault details |
+| `get_device_last_used_programs` | Retrieve last used programs for a device |
 | `get_device_camera` | Live camera image from oven (requires `mcs_thirdparty_media` scope) |
 | `put_device_action` | Send an action to a device (with preflight check & dry-run mode) |
 | `start_device_program` | Start a program on a device (with preflight check & dry-run mode) |

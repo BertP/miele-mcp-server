@@ -6,7 +6,7 @@ import packageJson from '../../package.json';
 import { listDevicesTool } from './tools/listDevices';
 import { getDeviceStateTool } from './tools/getDeviceState';
 import { getDeviceActionsTool } from './tools/getDeviceActions';
-import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool, getAllFillingLevelsTool, getDeviceFillingLevelsTool, getFailureDetailsTool } from './tools/otherReadTools';
+import { getDeviceTool, getDeviceProgramsTool, getDeviceIdentTool, getAllFillingLevelsTool, getDeviceFillingLevelsTool, getFailureDetailsTool, getDeviceLastUsedProgramsTool } from './tools/otherReadTools';
 import { getDeviceCameraTool } from './tools/getDeviceCamera';
 import { putDeviceActionTool } from './tools/putDeviceAction';
 import { startDeviceProgramTool } from './tools/startDeviceProgram';
@@ -35,6 +35,7 @@ export function createMcpServer(): Server {
     getAllFillingLevelsTool,
     getDeviceFillingLevelsTool,
     getFailureDetailsTool,
+    getDeviceLastUsedProgramsTool,
     getDeviceCameraTool,
     putDeviceActionTool,
     startDeviceProgramTool,
